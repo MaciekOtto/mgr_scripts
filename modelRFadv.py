@@ -57,12 +57,12 @@ try:
     train_data = df_panel[df_panel[date_name] < split_date].copy()
     test_data = df_panel[df_panel[date_name] >= split_date].copy()
 
-    # Definicja kolumn wejściowych (X) - lagi + nowe wskaźniki
+    # Definicja kolumn wejściowych (X)
     X_cols = [f'lag_{i}' for i in range(1, HORYZONT + 1)] + ['SMA_20', 'Vol_20', 'RSI']
     y_cols = [f'target_{i}d' for i in range(1, HORYZONT + 1)]
 
-    # --- OPTYMALIZACJA (Tuning na podpróbce 10%) ---
-    print("Rozpoczynam tuning na 10% danych treningowych (oszczędność RAM)...")
+    # --- OPTYMALIZACJA ---
+    print("Rozpoczynam tuning na 10% danych treningowych...")
     train_sample = train_data.sample(frac=0.1, random_state=42)
     
     param_dist = {
@@ -72,7 +72,6 @@ try:
     }
 
     base_rf = RandomForestRegressor(random_state=42, n_jobs=2)
-    
     rf_random = RandomizedSearchCV(
         estimator=base_rf, 
         param_distributions=param_dist, 
@@ -88,13 +87,21 @@ try:
     print(f"Najlepsze parametry z tuningu: {best_params}")
 
     # --- TRENOWANIE FINALNE ---
-    print("Trenowanie modelu finalnego na pełnym zbiorze z nowymi wskaźnikami...")
+    print("Trenowanie modelu finalnego...")
     final_model = RandomForestRegressor(
         **best_params, 
         random_state=42, 
         n_jobs=2 
     )
     final_model.fit(train_data[X_cols], train_data[y_cols])
+
+    # --- NOWE: OBLICZANIE WARIANCJI (NIEPEWNOŚCI MODELU) ---
+    print("Analiza niepewności modelu (wariancja drzew)...")
+    # Pobieramy predykcje z każdego drzewa osobno
+    tree_preds = np.array([tree.predict(test_data[X_cols]) for tree in final_model.estimators_])
+    # Obliczamy wariancję między drzewami dla każdej prognozy
+    # Następnie wyciągamy średnią z 5 dni dla każdego wiersza
+    test_data['Ryzyko_Modelu_RF'] = np.mean(np.var(tree_preds, axis=0), axis=1)
 
     # --- PREDYKCJE ---
     print("Generowanie predykcji...")
@@ -114,8 +121,7 @@ try:
         actuals_flat = ticker_df[t_cols].values.flatten()
         preds_flat = ticker_df[p_cols].values.flatten()
         
-        # OBLICZANIE TRAFNOŚCI KIERUNKU (Directional Accuracy)
-        # Porównujemy czy znaki (wzrost/spadek) są takie same
+        # OBLICZANIE TRAFNOŚCI KIERUNKU
         same_direction = np.sign(actuals_flat) == np.sign(preds_flat)
         dir_accuracy = np.mean(same_direction)
         
@@ -124,19 +130,23 @@ try:
             'Zagregowane_R2': r2_score(actuals_flat, preds_flat),
             'Zagregowane_MSE': mean_squared_error(actuals_flat, preds_flat),
             'Zagregowane_MAE': mean_absolute_error(actuals_flat, preds_flat),
-            'Trafnosc_Kierunku': dir_accuracy
+            'Trafnosc_Kierunku': dir_accuracy,
+            'Ryzyko_Modelu_Średnie': ticker_df['Ryzyko_Modelu_RF'].mean() # NOWA KOLUMNA
         }
         
-        # 5 dni Rzeczywistych vs 5 dni Predykcji (ostatni znany punkt w danych)
         last_row = ticker_df.iloc[-1]
         for d in range(1, HORYZONT + 1):
             res_row[f'Rzeczywista_{d}d'] = last_row[f'target_{d}d']
             res_row[f'Predykcja_{d}d'] = last_row[f'Pred_{d}d']
         final_results.append(res_row)
 
+    # --- NOWE: ZAPIS ISTOTNOŚCI CECH ---
+    importances = pd.DataFrame({'Cecha': X_cols, 'Waga': final_model.feature_importances_})
+    importances.sort_values(by='Waga', ascending=False).to_csv('istotnosc_cech_RF.csv', index=False, sep=';', decimal=',')
+
     final_df = pd.DataFrame(final_results)
-    final_df.to_csv('wyniki_magisterka_final_v4.csv', index=False, sep=';', decimal=',')
-    print(f"SUKCES! Wyniki ze wskaźnikami i tuningiem zapisane. Przetworzono {len(final_df)} spółek.")
+    final_df.to_csv('wyniki_magisterka_z_ryzykiem_v5.csv', index=False, sep=';', decimal=',')
+    print(f"SUKCES! Wygenerowano pliki: 'wyniki_magisterka_z_ryzykiem_v5.csv' oraz 'istotnosc_cech_RF.csv'.")
 
 except Exception as e:
     print(f"Wystąpił błąd: {e}")
