@@ -1,0 +1,99 @@
+import pandas as pd
+from statsmodels.tsa.stattools import adfuller
+import time
+
+# Nazwa Twojego pliku wejściowego
+input_file = 'dane1000stopy.xlsx'
+# Nazwa pliku wyjściowego z wynikami
+output_file = 'wyniki_ADF_1000_stp.xlsx'
+
+print(f"Wczytuję dane z pliku: {input_file}...")
+
+try:
+    # Wczytanie danych z Excela.
+    # Pandas zazwyczaj radzi sobie z liczbami w Excelu automatycznie.
+    # Jeśli jednak liczby są zapisane jako tekst z przecinkami, 
+    # warto dodać konwersję (tutaj zakładam standardowy format Excela).
+    df = pd.read_excel(input_file)
+    
+    # Obsługa kolumny z datą
+    # Szukamy kolumny, która może być datą (np. 'Data', 'Date')
+    col_data = None
+    for col in df.columns:
+        if 'data' in col.lower() or 'date' in col.lower():
+            col_data = col
+            break
+    
+    if col_data:
+        df[col_data] = pd.to_datetime(df[col_data])
+        df.set_index(col_data, inplace=True)
+        print(f"Ustawiono kolumnę '{col_data}' jako indeks czasowy.")
+    else:
+        print("UWAGA: Nie znaleziono kolumny z datą. Używam indeksu domyślnego.")
+
+    print(f"Liczba spółek do przeanalizowania: {len(df.columns)}")
+    print("Rozpoczynam testy ADF (może to chwilę potrwać)...")
+
+    wyniki_testow = []
+    start_time = time.time()
+
+    # Pętla po wszystkich kolumnach (spółkach)
+    for i, ticker in enumerate(df.columns):
+        try:
+            # Pobieramy szereg i usuwamy ewentualne puste wiersze (NaN)
+            series = df[ticker].dropna()
+            #ile_brakow_po_konwersji = df[ticker].isnull().sum()
+            #print(f"Liczba braków (NaN) po konwersji dla {ticker}: {ile_brakow_po_konwersji}")
+            
+            # Sprawdzenie czy dane są liczbami (na wypadek błędów w Excelu)
+            # Jeśli dane wczytały się jako tekst z przecinkiem (np. '6,81'), zamieniamy na float
+            if series.dtype == 'object':
+                series = series.astype(str).str.replace(',', '.').astype(float)
+
+            # Test ADF
+            result = adfuller(series)
+            #dodaj tam moze maks ilosc lags, albo stala dla kazdego testu ilosc lags
+
+            adf_stat = result[0]
+            p_value = result[1]
+            usedlag = result[2]
+            nobs = result[3]
+            
+            # Zapis wyniku
+            wyniki_testow.append({
+                'Spółka': ticker,
+                'Statystyka ADF': round(adf_stat, 4),
+                'p-value': round(p_value, 6),
+                'Czy stacjonarny (p<0.05)': 'TAK' if p_value < 0.05 else 'NIE',
+                'Liczba obs.': nobs
+            })
+        except Exception as e:
+            # W razie błędu dla konkretnej spółki (np. same zera, pusta kolumna)
+            print(f"Błąd dla spółki {ticker}: {e}")
+            wyniki_testow.append({
+                'Spółka': ticker,
+                'Statystyka ADF': None,
+                'p-value': None,
+                'Czy stacjonarny (p<0.05)': 'BŁĄD',
+                'Liczba obs.': 0
+            })
+
+        # Wyświetlanie postępu co 100 spółek
+        if (i + 1) % 100 == 0:
+            print(f"Przetworzono {i + 1} z {len(df.columns)} spółek...")
+
+    # Zapis do Excela
+    df_wyniki = pd.DataFrame(wyniki_testow)
+    df_wyniki.to_excel(output_file, index=False)
+    
+    end_time = time.time()
+    duration = end_time - start_time
+
+    print("-" * 30)
+    print(f"Zakończono! Przeanalizowano {len(df.columns)} szeregów w {duration:.2f} s.")
+    print(f"Wyniki zapisano w pliku: {output_file}")
+
+except FileNotFoundError:
+    print(f"BŁĄD: Nie znaleziono pliku '{input_file}'. Upewnij się, że jest w tym samym folderze co skrypt.")
+except Exception as e:
+    print(f"Wystąpił nieoczekiwany błąd: {e}")
