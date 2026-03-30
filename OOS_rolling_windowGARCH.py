@@ -1,15 +1,19 @@
 """
-Rolling Window Out-of-Sample Forecasting — 4 modele GARCH
-=========================================================
-Dane:    dane1000stopy.xlsx  (kolumna z datą + 1000 kolumn ze stopami zwrotu)
-Wynik:   garch_prognozy_oos.parquet  — prognozy σ² dla każdej spółki i modelu
-         garch_rmse_mae.xlsx         — RMSE i MAE per spółka per model
+GARCH Rolling Window OOS — wersja równoległa z checkpointami
+=============================================================
+Uruchom wieczorem, rano masz wyniki.
 
-Metodologia:
-  - Okno treningowe: pierwsze TRAIN_SIZE dni (domyślnie 1000)
-  - Okno testowe:    pozostałe TEST_SIZE dni (~500)
-  - Rolling: co krok przesuwamy okno o 1 dzień i prognozujemy σ²_t+1
-  - Zmienna celu (proxy zmienności): r²_t (realized variance)
+Jak działa:
+  - Każdy rdzeń procesora dostaje porcję spółek i liczy je niezależnie
+  - Co CHECKPOINT_EVERY spółek wyniki są zapisywane na dysk
+  - Jeśli skrypt się wywróci — wznawiasz od ostatniego checkpointu
+  - Na końcu wszystkie checkpointy są scalane w jeden plik wynikowy
+
+Uruchomienie:
+  python garch_rolling_parallel.py
+
+Wznowienie po przerwie (automatyczne — skrypt sam wykryje checkpointy):
+  python garch_rolling_parallel.py
 """
 
 import pandas as pd
@@ -17,100 +21,72 @@ import numpy as np
 from arch import arch_model
 import time
 import os
+import glob
 import warnings
+import multiprocessing as mp
+from functools import partial
+
 warnings.filterwarnings('ignore')
 
 # ── Ustawienia ────────────────────────────────────────────────────────────────
 
-INPUT_FILE  = 'dane1000stopy.xlsx'
-OUT_PARQUET = 'garch_prognozy_oos.parquet'   # główny plik z prognozami
-OUT_EXCEL   = 'garch_rmse_mae.xlsx'          # RMSE / MAE per spółka
+INPUT_FILE       = 'dane1000stopy.xlsx'
+CHECKPOINT_DIR   = 'checkpoints_garch'   # folder z częściowymi wynikami
+OUT_PARQUET      = 'garch_prognozy_oos.parquet'
+OUT_EXCEL        = 'garch_rmse_mae.xlsx'
 
-TRAIN_SIZE  = 1000   # liczba dni w oknie treningowym
-SCALE       = 100    # arch lubi dane przeskalowane (zwroty × 100)
+TRAIN_SIZE       = 1000
+SCALE            = 100
+CHECKPOINT_EVERY = 50    # zapisuj co ile spółek (per worker)
+N_WORKERS        = None  # None = automatycznie (wszystkie rdzenie - 1)
 
-# Modele do estymacji — (nazwa, vol, p, q, dodatkowe kwargs)
 MODELS = [
     ('GARCH',     'Garch',  1, 1, {}),
-    ('GJR-GARCH', 'Garch',  1, 1, {'o': 1}),          # o=1 → GJR
+    ('GJR-GARCH', 'Garch',  1, 1, {'o': 1}),
     ('EGARCH',    'EGARCH', 1, 1, {}),
     ('APARCH',    'APARCH', 1, 1, {}),
 ]
 
-# ── Wczytanie danych ──────────────────────────────────────────────────────────
+# ── Funkcja dla jednej spółki (uruchamiana w osobnym procesie) ────────────────
 
-print(f"Wczytuję dane z: {INPUT_FILE}")
-df = pd.read_excel(INPUT_FILE)
+def process_ticker(args):
+    """
+    Liczy rolling OOS dla jednej spółki, wszystkie 4 modele.
+    Zwraca słownik z prognozami i metrykami.
+    """
+    ticker, series_raw, train_size, scale, models = args
 
-# Wykrycie kolumny z datą
-date_col = next((c for c in df.columns if 'data' in c.lower() or 'date' in c.lower()), None)
-if date_col:
-    df[date_col] = pd.to_datetime(df[date_col])
-    df.set_index(date_col, inplace=True)
+    series_full = series_raw * scale
+    realized    = series_raw ** 2
+    test_size   = len(series_raw) - train_size
 
-# Konwersja (obsługa przecinka jako separatora dziesiętnego)
-for col in df.columns:
-    df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
+    result = {'ticker': ticker, 'forecasts': {}, 'metrics': []}
 
-df.dropna(inplace=True)
-tickers = df.columns.tolist()
-T = len(df)
-TEST_SIZE = T - TRAIN_SIZE
+    for model_name, vol, p, q, kwargs in models:
+        forecasts = np.full(test_size, np.nan)
 
-print(f"Spółek: {len(tickers)} | Dni łącznie: {T} | Train: {TRAIN_SIZE} | Test: {TEST_SIZE}")
-assert TEST_SIZE > 0, "Za mało danych — zmniejsz TRAIN_SIZE"
-
-# ── Rolling Window OOS ────────────────────────────────────────────────────────
-
-# Słownik wynikowy: {model_name: DataFrame(index=daty_testu, columns=tickers)}
-all_forecasts = {name: pd.DataFrame(index=df.index[TRAIN_SIZE:], columns=tickers, dtype=float)
-                 for name, *_ in MODELS}
-
-rmse_records = []   # lista słowników do zbiorczego RMSE/MAE
-
-total_start = time.time()
-
-for t_idx, ticker in enumerate(tickers):
-    series_full = df[ticker].values * SCALE   # przeskalowanie
-    realized    = (df[ticker].values) ** 2    # r²_t — proxy zmienności (NIE skalowane)
-
-    ticker_forecasts = {name: np.full(TEST_SIZE, np.nan) for name, *_ in MODELS}
-
-    for model_name, vol, p, q, kwargs in MODELS:
-        forecasts_model = np.full(TEST_SIZE, np.nan)
-
-        for step in range(TEST_SIZE):
-            train_end = TRAIN_SIZE + step
-            train_data = series_full[:train_end]
-
+        for step in range(test_size):
+            train_data = series_full[:train_size + step]
             try:
-                am  = arch_model(train_data, mean='Constant', vol=vol, p=p, q=q, **kwargs)
+                am  = arch_model(train_data, mean='Constant', vol=vol,
+                                 p=p, q=q, **kwargs)
                 res = am.fit(disp='off', show_warning=False)
-
-                # 1-krokowa prognoza wariancji (h.1 jest w jednostkach SCALE²)
                 fc  = res.forecast(horizon=1, reindex=False)
-                var_scaled = fc.variance.values[-1, 0]
-
-                # Przeliczenie z powrotem na oryginalne jednostki (r²)
-                forecasts_model[step] = var_scaled / (SCALE ** 2)
-
+                forecasts[step] = fc.variance.values[-1, 0] / (scale ** 2)
             except Exception:
-                # Przy błędzie konwergencji zostawiamy NaN
-                forecasts_model[step] = np.nan
+                forecasts[step] = np.nan
 
-        all_forecasts[model_name][ticker] = forecasts_model
+        result['forecasts'][model_name] = forecasts
 
-        # ── Metryki per spółka per model ──────────────────────────────────────
-        realized_test = realized[TRAIN_SIZE:]
-        valid = ~np.isnan(forecasts_model)
-
+        realized_test = realized[train_size:]
+        valid = ~np.isnan(forecasts)
         if valid.sum() > 10:
-            rmse = np.sqrt(np.mean((forecasts_model[valid] - realized_test[valid]) ** 2))
-            mae  = np.mean(np.abs(forecasts_model[valid] - realized_test[valid]))
+            rmse = float(np.sqrt(np.mean((forecasts[valid] - realized_test[valid]) ** 2)))
+            mae  = float(np.mean(np.abs(forecasts[valid] - realized_test[valid])))
         else:
             rmse = mae = np.nan
 
-        rmse_records.append({
+        result['metrics'].append({
             'Spółka':  ticker,
             'Model':   model_name,
             'RMSE':    rmse,
@@ -118,62 +94,205 @@ for t_idx, ticker in enumerate(tickers):
             'N_valid': int(valid.sum()),
         })
 
-    # Postęp co 50 spółek
-    if (t_idx + 1) % 50 == 0:
-        elapsed = time.time() - total_start
-        eta = elapsed / (t_idx + 1) * (len(tickers) - t_idx - 1)
-        print(f"  [{t_idx+1}/{len(tickers)}]  czas: {elapsed/60:.1f} min  |  ETA: {eta/60:.1f} min")
+    return result
 
-# ── Zapis wyników ─────────────────────────────────────────────────────────────
 
-print("\nZapisuję prognozy...")
+def process_batch(batch_args):
+    """
+    Liczy rolling OOS dla listy spółek (jedna porcja na worker).
+    Zapisuje checkpoint co CHECKPOINT_EVERY spółek.
+    """
+    batch_idx, tickers_batch, data_dict, train_size, scale, models, \
+        checkpoint_dir, checkpoint_every = batch_args
 
-# Parquet — szybki format kolumnowy, idealny do dalszej analizy
-# Struktura: MultiIndex kolumn (model, ticker)
-frames = []
-for model_name, df_fc in all_forecasts.items():
-    df_fc.columns = pd.MultiIndex.from_product([[model_name], df_fc.columns])
-    frames.append(df_fc)
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    batch_results = []
 
-df_all = pd.concat(frames, axis=1)
-df_all.to_parquet(OUT_PARQUET)
-print(f"Prognozy zapisane: {OUT_PARQUET}  ({os.path.getsize(OUT_PARQUET)/1e6:.1f} MB)")
+    for i, ticker in enumerate(tickers_batch):
+        series_raw = data_dict[ticker]
+        res = process_ticker((ticker, series_raw, train_size, scale, models))
+        batch_results.append(res)
 
-# Excel z RMSE / MAE
-df_metrics = pd.DataFrame(rmse_records)
+        # Checkpoint co N spółek
+        if (i + 1) % checkpoint_every == 0 or (i + 1) == len(tickers_batch):
+            cp_path = os.path.join(checkpoint_dir,
+                                   f'batch_{batch_idx:03d}_up_to_{i:04d}.pkl')
+            pd.to_pickle(batch_results, cp_path)
 
-# Tabela przestawna — wiersze: spółki, kolumny: modele
-pivot_rmse = df_metrics.pivot(index='Spółka', columns='Model', values='RMSE')
-pivot_mae  = df_metrics.pivot(index='Spółka', columns='Model', values='MAE')
+    return batch_results
 
-with pd.ExcelWriter(OUT_EXCEL, engine='openpyxl') as writer:
-    df_metrics.to_excel(writer, sheet_name='Surowe', index=False)
-    pivot_rmse.to_excel(writer, sheet_name='RMSE_pivot')
-    pivot_mae.to_excel(writer, sheet_name='MAE_pivot')
 
-    # Arkusz ze statystykami podsumowującymi
+# ── Wczytanie danych ──────────────────────────────────────────────────────────
+
+def load_data(input_file):
+    print(f"Wczytuję dane z: {input_file}")
+    df = pd.read_excel(input_file)
+
+    date_col = next((c for c in df.columns
+                     if 'data' in c.lower() or 'date' in c.lower()), None)
+    if date_col:
+        df[date_col] = pd.to_datetime(df[date_col])
+        df.set_index(date_col, inplace=True)
+
+    for col in df.columns:
+        df[col] = pd.to_numeric(
+            df[col].astype(str).str.replace(',', '.'), errors='coerce')
+
+    df.dropna(inplace=True)
+    return df
+
+
+# ── Wykrywanie ukończonych spółek z checkpointów ─────────────────────────────
+
+def load_completed_tickers(checkpoint_dir):
+    """Zwraca set tickerów które już mamy z poprzednich uruchomień."""
+    if not os.path.exists(checkpoint_dir):
+        return set(), []
+
+    completed = set()
+    all_results = []
+    cp_files = sorted(glob.glob(os.path.join(checkpoint_dir, '*.pkl')))
+
+    for cp_file in cp_files:
+        try:
+            batch = pd.read_pickle(cp_file)
+            for res in batch:
+                if res['ticker'] not in completed:
+                    completed.add(res['ticker'])
+                    all_results.append(res)
+        except Exception as e:
+            print(f"  Uwaga: nie mogę wczytać {cp_file}: {e}")
+
+    return completed, all_results
+
+
+# ── Scalanie wyników ──────────────────────────────────────────────────────────
+
+def build_outputs(all_results, test_index, out_parquet, out_excel):
+    model_names = [m[0] for m in MODELS]
+
+    # Słownik prognoz: {model: {ticker: array}}
+    forecasts_dict = {m: {} for m in model_names}
+    metrics_list   = []
+
+    for res in all_results:
+        ticker = res['ticker']
+        for model_name, fc_array in res['forecasts'].items():
+            forecasts_dict[model_name][ticker] = fc_array
+        metrics_list.extend(res['metrics'])
+
+    # DataFrame z prognozami (MultiIndex kolumn)
+    frames = []
+    for model_name in model_names:
+        df_fc = pd.DataFrame(forecasts_dict[model_name], index=test_index)
+        df_fc.columns = pd.MultiIndex.from_product([[model_name], df_fc.columns])
+        frames.append(df_fc)
+
+    df_all = pd.concat(frames, axis=1)
+    df_all.to_parquet(out_parquet)
+    print(f"Prognozy zapisane: {out_parquet}  "
+          f"({os.path.getsize(out_parquet)/1e6:.1f} MB)")
+
+    # Excel z metrykami
+    df_metrics   = pd.DataFrame(metrics_list)
+    pivot_rmse   = df_metrics.pivot(index='Spółka', columns='Model', values='RMSE')
+    pivot_mae    = df_metrics.pivot(index='Spółka', columns='Model', values='MAE')
+
     summary_rows = []
-    for model_name in [m[0] for m in MODELS]:
-        rmse_vals = pivot_rmse[model_name].dropna()
-        mae_vals  = pivot_mae[model_name].dropna()
+    for mn in model_names:
+        rv = pivot_rmse[mn].dropna()
+        mv = pivot_mae[mn].dropna()
         summary_rows.append({
-            'Model':          model_name,
-            'RMSE_mediana':   rmse_vals.median(),
-            'RMSE_srednia':   rmse_vals.mean(),
-            'RMSE_std':       rmse_vals.std(),
-            'MAE_mediana':    mae_vals.median(),
-            'MAE_srednia':    mae_vals.mean(),
-            'N_spółek_OK':    len(rmse_vals),
+            'Model':        mn,
+            'RMSE_mediana': rv.median(),
+            'RMSE_srednia': rv.mean(),
+            'RMSE_std':     rv.std(),
+            'MAE_mediana':  mv.median(),
+            'MAE_srednia':  mv.mean(),
+            'N_spółek_OK':  len(rv),
         })
-    pd.DataFrame(summary_rows).to_excel(writer, sheet_name='Podsumowanie', index=False)
 
-print(f"Metryki zapisane:  {OUT_EXCEL}")
-print(f"\nCałkowity czas: {(time.time()-total_start)/60:.1f} min")
-print("GOTOWE.")
+    with pd.ExcelWriter(out_excel, engine='openpyxl') as writer:
+        df_metrics.to_excel(writer,   sheet_name='Surowe',       index=False)
+        pivot_rmse.to_excel(writer,   sheet_name='RMSE_pivot')
+        pivot_mae.to_excel(writer,    sheet_name='MAE_pivot')
+        pd.DataFrame(summary_rows).to_excel(
+            writer, sheet_name='Podsumowanie', index=False)
 
-# ── Szybki podgląd wyników ────────────────────────────────────────────────────
+    print(f"Metryki zapisane:  {out_excel}")
 
-print("\n── Podsumowanie RMSE (mediana po spółkach) ──")
-print(pivot_rmse.median().round(8).to_string())
-print("\n── Podsumowanie MAE (mediana po spółkach) ──")
-print(pivot_mae.median().round(8).to_string())
+    print("\n── Podsumowanie RMSE (mediana po spółkach) ──")
+    print(pivot_rmse.median().round(8).to_string())
+    print("\n── Podsumowanie MAE (mediana po spółkach) ──")
+    print(pivot_mae.median().round(8).to_string())
+
+
+# ── MAIN ──────────────────────────────────────────────────────────────────────
+
+if __name__ == '__main__':
+
+    total_start = time.time()
+
+    # 1. Dane
+    df      = load_data(INPUT_FILE)
+    tickers = df.columns.tolist()
+    T       = len(df)
+    TEST_SIZE = T - TRAIN_SIZE
+    test_index = df.index[TRAIN_SIZE:]
+
+    print(f"Spółek: {len(tickers)} | Dni: {T} | "
+          f"Train: {TRAIN_SIZE} | Test: {TEST_SIZE}")
+
+    # 2. Sprawdź które spółki już są gotowe (wznawianie)
+    completed_tickers, existing_results = load_completed_tickers(CHECKPOINT_DIR)
+
+    if completed_tickers:
+        print(f"\nZnaleziono checkpointy: {len(completed_tickers)} spółek już gotowych.")
+        remaining = [t for t in tickers if t not in completed_tickers]
+        print(f"Pozostało do policzenia: {len(remaining)} spółek.")
+    else:
+        print("\nBrak checkpointów — zaczynam od nowa.")
+        remaining = tickers
+
+    if not remaining:
+        print("Wszystkie spółki już policzone! Scalanie wyników...")
+        build_outputs(existing_results, test_index, OUT_PARQUET, OUT_EXCEL)
+        exit()
+
+    # 3. Słownik danych (tylko potrzebne spółki)
+    data_dict = {t: df[t].values for t in remaining}
+
+    # 4. Podział na batche dla workerów
+    n_workers = N_WORKERS or max(1, mp.cpu_count() - 1)
+    print(f"\nLiczba workerów: {n_workers} (z {mp.cpu_count()} dostępnych rdzeni)")
+
+    # Dzielimy remaining na n_workers równych porcji
+    batches = np.array_split(remaining, n_workers)
+    batches = [list(b) for b in batches if len(b) > 0]
+
+    batch_args = [
+        (idx, batch, data_dict, TRAIN_SIZE, SCALE, MODELS,
+         CHECKPOINT_DIR, CHECKPOINT_EVERY)
+        for idx, batch in enumerate(batches)
+    ]
+
+    print(f"Podział: {len(batches)} batchy, "
+          f"~{len(remaining)//len(batches)} spółek na batch")
+    print(f"\nStart obliczeń... (zostaw komputer na noc)\n")
+
+    # 5. Równoległe obliczenia
+    with mp.Pool(processes=n_workers) as pool:
+        batch_results_list = pool.map(process_batch, batch_args)
+
+    # Spłaszcz wyniki
+    new_results = [res for batch in batch_results_list for res in batch]
+    all_results = existing_results + new_results
+
+    print(f"\nObliczenia zakończone. Łącznie spółek: {len(all_results)}")
+
+    # 6. Zapis końcowy
+    build_outputs(all_results, test_index, OUT_PARQUET, OUT_EXCEL)
+
+    elapsed = time.time() - total_start
+    print(f"\nCałkowity czas: {elapsed/3600:.2f} godz.")
+    print("GOTOWE. Możesz teraz uruchomić skrypt ML.")
