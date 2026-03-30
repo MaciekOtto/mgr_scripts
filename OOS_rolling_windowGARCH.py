@@ -35,7 +35,7 @@ CHECKPOINT_DIR   = 'checkpoints_garch'   # folder z częściowymi wynikami
 OUT_PARQUET      = 'garch_prognozy_oos.parquet'
 OUT_EXCEL        = 'garch_rmse_mae.xlsx'
 
-TRAIN_SIZE       = 1000
+TRAIN_SIZE       = 1250  # 1500 - 250 = 250 dni OOS (~1 rok handlowy)
 SCALE            = 100
 CHECKPOINT_EVERY = 50    # zapisuj co ile spółek (per worker)
 N_WORKERS        = None  # None = automatycznie (wszystkie rdzenie - 1)
