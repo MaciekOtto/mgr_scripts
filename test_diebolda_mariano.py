@@ -7,14 +7,14 @@ względem zrealizowanej wariancji (r^2).
 Wymagania co do plików:
 - Realized variance liczona jest z `dane1000stopy.xlsx` (log-stopy zwrotu)
   jako r_t^2, dla ostatnich TEST_SIZE obserwacji każdej spółki.
-- Prognozy modeli: jeden plik parquet na model, np.:
-    garch_forecasts.parquet, gjrgarch_forecasts.parquet,
-    rf_forecasts.parquet, lstm_forecasts.parquet, svr_forecasts.parquet
-  Skrypt akceptuje DWA możliwe layouty pliku parquet i wykrywa go
-  automatycznie:
-    (A) "long"  - kolumny: ticker, date, forecast
-    (B) "wide"  - wiersze = daty testowe, kolumny = tickery (TICKER_Close
-                  lub po prostu TICKER), tak jak w dane1000stopy.xlsx
+- Prognozy modeli GARCH-family: JEDEN plik parquet
+  (`garch_prognozy_oos.parquet`) zawierający wszystkie cztery modele
+  (GARCH, EGARCH, GJR-GARCH, APARCH) w kolumnach typu MultiIndex
+  (MODEL, TICKER_Close), z datami w indeksie wierszy (kolumna "index"
+  w metadanych parquet).
+- Prognozy modeli ML (RF, LSTM, SVR): osobne pliki parquet na model,
+  w formacie "wide" (daty x tickery) lub "long" (ticker, date, forecast)
+  - skrypt wykrywa format automatycznie.
 
 Wynik: zbiorczy DataFrame z liczbą/procentem spółek, dla których dany
 model istotnie przewyższa drugi (p-value < 0.05), zapisany do Excela.
@@ -31,10 +31,12 @@ RETURNS_FILE = "dane1000stopy.xlsx"
 TEST_SIZE = 250  # zgodnie ze schematem expanding window TRAIN=1250/TEST=250
 ALPHA = 0.05
 
-# Pliki z prognozami - dopasuj nazwy do swoich plików
-FORECAST_FILES = {
-    "GARCH": "garch_forecasts.parquet",
-    "GJR-GARCH": "gjrgarch_forecasts.parquet",
+# Jeden plik z prognozami modeli GARCH-family (MultiIndex kolumn: model, ticker)
+GARCH_FAMILY_FILE = "garch_prognozy_oos.parquet"
+GARCH_FAMILY_MODELS = ["GARCH", "EGARCH", "GJR-GARCH", "APARCH"]
+
+# Osobne pliki dla modeli ML - dopasuj nazwy do swoich plików
+ML_FORECAST_FILES = {
     "RF": "rf_forecasts.parquet",
     "LSTM": "lstm_forecasts.parquet",
     "SVR": "svr_forecasts.parquet",
@@ -69,6 +71,38 @@ def load_realized_variance(returns_file: str, test_size: int) -> pd.DataFrame:
 
     rv = df.iloc[-test_size:] ** 2
     return rv  # wiersze = daty testowe, kolumny = tickery
+
+
+def load_garch_family(path: str, tickers: list, test_size: int) -> dict:
+    """Wczytuje plik parquet z prognozami wszystkich modeli GARCH-family,
+    gdzie kolumny są MultiIndex w formacie (MODEL, TICKER_Close), a wiersze
+    to daty. Zwraca słownik {model_name: DataFrame (daty x tickery)}."""
+    raw = pd.read_parquet(path)
+
+    if not isinstance(raw.columns, pd.MultiIndex):
+        raise ValueError(
+            f"Oczekiwano kolumn MultiIndex (model, ticker) w {path}, "
+            f"otrzymano: {type(raw.columns)}"
+        )
+
+    # ujednolicenie indeksu (daty)
+    if not isinstance(raw.index, pd.DatetimeIndex):
+        raw.index = pd.to_datetime(raw.index, errors="coerce")
+    raw = raw.sort_index()
+
+    level0 = raw.columns.get_level_values(0)
+    models_found = sorted(set(level0))
+    print(f"  Modele znalezione w {path}: {models_found}")
+
+    out = {}
+    for model in models_found:
+        sub = raw.xs(model, axis=1, level=0)
+        sub.columns = [str(c).replace("_Close", "") for c in sub.columns]
+        sub = sub.iloc[-test_size:]
+        common = [t for t in sub.columns if t in tickers]
+        out[model] = sub[common]
+
+    return out
 
 
 def load_forecast_wide(path: str, tickers: list, test_size: int) -> pd.DataFrame:
@@ -156,11 +190,23 @@ def main():
     print(f"Wczytano realized variance dla {len(tickers)} spółek, "
           f"{rv.shape[0]} obserwacji testowych.")
 
-    # wczytanie wszystkich potrzebnych modeli
-    needed_models = sorted({m for pair in MODEL_PAIRS for m in pair})
     forecasts = {}
-    for model in needed_models:
-        path = FORECAST_FILES[model]
+
+    # --- modele GARCH-family z jednego pliku ---
+    if Path(GARCH_FAMILY_FILE).exists():
+        garch_dict = load_garch_family(GARCH_FAMILY_FILE, tickers, TEST_SIZE)
+        for model, df in garch_dict.items():
+            forecasts[model] = df
+            print(f"Wczytano prognozy dla modelu {model}: "
+                  f"{df.shape[1]} spółek, {df.shape[0]} obs.")
+    else:
+        print(f"UWAGA: plik {GARCH_FAMILY_FILE} nie istnieje - "
+              f"modele GARCH-family pominięte.")
+
+    # --- modele ML z osobnych plików ---
+    needed_ml = {m for pair in MODEL_PAIRS for m in pair if m in ML_FORECAST_FILES}
+    for model in sorted(needed_ml):
+        path = ML_FORECAST_FILES[model]
         if not Path(path).exists():
             print(f"UWAGA: plik {path} nie istnieje - pomijam model {model}")
             continue
