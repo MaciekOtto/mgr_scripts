@@ -7,7 +7,6 @@ import time
 import os
 import warnings
 
-# Wyciszenie ostrzeżeń systemowych
 warnings.filterwarnings('ignore')
 
 # --- Ustawienia Plików ---
@@ -16,7 +15,7 @@ output_file_gjr = 'wyniki_GJRGARCH_1000.xlsx'
 output_folder = 'wykresy_gjrgarch_parametry'
 os.makedirs(output_folder, exist_ok=True)
 
-print(f"Wczytuję dane z pliku: {input_file}...")
+print(f"Wczytanie dane z pliku: {input_file}...")
 
 try:
     df_returns = pd.read_excel(input_file)
@@ -34,7 +33,7 @@ try:
     wyniki_gjr = []
     start_time = time.time()
 
-    print(f"Rozpoczynam szacowanie dla {len(df_returns.columns)} spółek...")
+    print(f"szacowanie dla {len(df_returns.columns)} spółek...")
 
     for i, ticker in enumerate(df_returns.columns):
         series = df_returns[ticker].dropna()
@@ -47,7 +46,6 @@ try:
             # Model GJR-GARCH: p=1, o=1, q=1
             am = arch_model(series, mean='Constant', vol='Garch', p=1, o=1, q=1, dist='Normal')
             
-            # POPRAWKA: Usunięto show_warnings=False, zostawiono tylko disp='off'
             res = am.fit(disp='off')
 
             p = res.params
@@ -56,7 +54,6 @@ try:
             beta = p.get('beta[1]', 0)
             omega = p.get('omega', 0)
             
-            # Persystencja dla GJR-GARCH: alpha + beta + 0.5 * gamma
             persistence = alpha + beta + 0.5 * gamma
             
             wyniki_gjr.append({
@@ -83,9 +80,9 @@ try:
     df_wyniki = pd.DataFrame(wyniki_gjr)
     df_wyniki.to_excel(output_file_gjr, index=False)
     
-    print(f"\n✅ Szacowanie zakończone. Czas: {time.time() - start_time:.2f} s.")
+    print(f"\nSzacowanie zakończone. Czas: {time.time() - start_time:.2f} s.")
 
-    # --- GENEROWANIE WYKRESÓW ---
+    # GENEROWANIE WYKRESÓW 
     df_plot = df_wyniki[df_wyniki['Status'] == 'OK'].copy()
     
     if not df_plot.empty:
@@ -98,7 +95,6 @@ try:
 
         for col, color, title in param_list:
             plt.figure(figsize=(10, 6))
-            # Filtracja dla lepszej wizualizacji (98% środkowych obserwacji)
             data = df_plot[col].dropna()
             q_low, q_high = data.quantile([0.01, 0.99])
             data_filtered = data[(data >= q_low) & (data <= q_high)]
@@ -115,4 +111,4 @@ try:
         print(f"Wykresy zapisano w folderze: {output_folder}")
 
 except Exception as e:
-    print(f"🔴 Błąd krytyczny: {e}")
+    print(f"Błąd krytyczny: {e}")
