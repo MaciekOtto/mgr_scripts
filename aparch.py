@@ -36,7 +36,7 @@ try:
     wyniki_aparch = []
     start_time = time.time()
 
-    print("\nRozpoczynam szacowanie modeli APARCH(1,1)...")
+    print("\nszacowanie modeli APARCH(1,1)...")
 
     for i, ticker in enumerate(df_returns.columns):
         series = df_returns[ticker].dropna()
@@ -48,19 +48,16 @@ try:
             continue
 
         try:
-            # vol='APARCH', p=1, o=1, q=1 -> o=1 odpowiada za parametr Gamma
-            # dist='Normal' lub 't' (studenta) - tutaj zostawiamy Normal dla porównywalności
             am = arch_model(series_scaled, mean='Constant', vol='APARCH', p=1, o=1, q=1, rescale=True)
             res = am.fit(disp='off', show_warning=False)
 
             p = res.params
             
-            # W APARCH mamy: omega, alpha, gamma, beta oraz delta (parametr potęgowy)
             omega = p.get('omega', np.nan)
             alpha = p.get('alpha[1]', np.nan)
             gamma = p.get('gamma[1]', np.nan)
             beta = p.get('beta[1]', np.nan)
-            delta = p.get('delta', np.nan) # Specyficzne dla APARCH
+            delta = p.get('delta', np.nan) 
             
             wyniki_aparch.append({
                 'Spółka': ticker,
@@ -103,7 +100,7 @@ try:
 
         for col, color, filename in params:
             plt.figure(figsize=(10, 6))
-            # Usuwamy outliery (percentyle 1-99), by wykres był czytelny
+            # Usuwam outliery, by wykres był czytelny
             data = df_plot[col].dropna()
             q_low, q_high = data.quantile([0.01, 0.99])
             data_filtered = data[(data > q_low) & (data < q_high)]
