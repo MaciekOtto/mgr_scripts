@@ -17,7 +17,7 @@ output_folder = 'analiza_statystyczna_aparch4testy1'
 os.makedirs(output_folder, exist_ok=True)
 
 try:
-    print(f"Wczytuję dane z pliku: {input_file}...")
+    print(f"Wczytanie danych z pliku: {input_file}...")
     df_returns = pd.read_excel(input_file)
     
     col_data = next((c for c in df_returns.columns if 'data' in c.lower() or 'date' in c.lower()), None)
@@ -63,20 +63,17 @@ try:
     df_res = pd.DataFrame(wyniki_raw)
     df_ok = df_res[df_res['Status'] == 'OK'].copy()
 
-    ## --- ANALIZA STATYSTYCZNA (4 TESTY K-S) ---
+    ## --- ANALIZA STATYSTYCZNA ---
     print("\nPrzeprowadzam testy p-value dla rozkładów: Normalny, t-Studenta, Log-normalny, F...")
     
-    # Parametry o które prosiłeś
     parametry = ['Alpha (APARCH)', 'Beta (APARCH)', 'Omega (APARCH)', 'Gamma (APARCH)', 'Delta (APARCH)']
     raport_stat = []
 
     for param in parametry:
         data = df_ok[param].dropna()
-        # Usuwanie outlierów (1% - 99%) dla stabilności testów
         q_low, q_high = data.quantile([0.01, 0.99])
         data_clean = data[(data > q_low) & (data < q_high)]
 
-        # Słownik na wyniki p-value
         p_values = {}
 
         # 1. Test Rozkładu Normalnego
@@ -87,14 +84,12 @@ try:
         params_t = stats.t.fit(data_clean)
         _, p_values['p-val t-Student'] = stats.kstest(data_clean, 't', args=params_t)
 
-        # 3. Test Rozkładu Log-normalnego (dla danych > 0)
-        # Dodajemy mały epsilon, by uniknąć błędów przy zerach
+        # 3. Test Rozkładu Log-normalnego 
         data_pos = data_clean + 0.00001 if data_clean.min() <= 0 else data_clean
         params_log = stats.lognorm.fit(data_pos)
         _, p_values['p-val Log-normalny'] = stats.kstest(data_pos, 'lognorm', args=params_log)
 
         # 4. Test Rozkładu F (Snedecora)
-        # Rozkład F wymaga dwóch parametrów stopni swobody i jest zdefiniowany dla x > 0
         params_f = stats.f.fit(data_pos)
         _, p_values['p-val F'] = stats.kstest(data_pos, 'f', args=params_f)
 
@@ -109,7 +104,6 @@ try:
         raport_stat.append(res_row)
 
         # --- WYBÓR NAJLEPSZEGO ROZKŁADU (Najwyższe p-value) ---
-        # Tworzymy mapowanie nazw p-value na kody scipy.stats
         mapping = {
             'p-val Normalny': ('norm', 'Normalny', 'blue'),
             'p-val t-Student': ('t', 't-Student', 'red'),
@@ -132,7 +126,6 @@ try:
         # Dopasowanie i rysowanie krzywej
         dist_func = getattr(stats, best_dist_code)
         
-        # Specjalna obsługa danych dla log-normalnego i F (muszą być > 0)
         if best_dist_code in ['lognorm', 'f']:
             d_plot = data_clean + 0.00001 if data_clean.min() <= 0 else data_clean
             params = dist_func.fit(d_plot)
@@ -158,9 +151,9 @@ try:
         df_ok.to_excel(writer, sheet_name='Parametry_APARCH', index=False)
         df_stat.to_excel(writer, sheet_name='Testy_p_value', index=False)
 
-    print(f"\n✅ GOTOWE. Wyniki zapisano w: {output_excel}")
+    print(f"\nGOTOWE. Wyniki zapisano w: {output_excel}")
     print("\nPodsumowanie p-values (H0: dane pochodzą z danego rozkładu):")
     print(df_stat[['Parametr', 'p-val Normalny', 'p-val t-Student', 'p-val Log-normalny', 'p-val F']])
 
 except Exception as e:
-    print(f"🔴 Wystąpił błąd: {e}")
+    print(f"Wystąpił błąd: {e}")
