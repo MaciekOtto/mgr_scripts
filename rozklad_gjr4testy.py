@@ -17,7 +17,7 @@ output_folder = 'analiza_statystyczna_parametrów'
 os.makedirs(output_folder, exist_ok=True)
 
 try:
-    print(f"Wczytuję dane: {input_file}...")
+    print(f"Wczytanie danych: {input_file}...")
     df = pd.read_excel(input_file)
     col_data = next((c for c in df.columns if 'data' in c.lower() or 'date' in c.lower()), None)
     if col_data:
@@ -27,14 +27,14 @@ try:
     df = df.apply(lambda x: pd.to_numeric(x.astype(str).str.replace(',', '.'), errors='coerce')).dropna(how='all')
 
     wyniki = []
-    print(f"Rozpoczynam analizę dla {len(df.columns)} spółek...")
+    print(f"analiza dla {len(df.columns)} spółek...")
 
     for i, ticker in enumerate(df.columns):
         series = df[ticker].dropna()
         if len(series) < 150: continue
 
         try:
-            # Model GJR-GARCH (uwzględnia asymetrię)
+            # Model GJR-GARCH 
             am = arch_model(series * 100, mean='Constant', vol='Garch', p=1, o=1, q=1, dist='Normal')
             res = am.fit(disp='off')
             
@@ -67,11 +67,10 @@ try:
 
     for param in parametry:
         data = df_ok[param].dropna()
-        # Filtracja outlierów dla czystości testów (2.5 - 97.5 percentyl)
         q_low, q_high = data.quantile([0.025, 0.975])
         data_clean = data[(data > q_low) & (data < q_high)]
 
-        # 1. Test Normalności (D'Agostino-Pearson)
+        # 1. Test Normalności 
         stat, p_val = stats.normaltest(data_clean)
         
         # 2. Szukanie najlepszego rozkładu (Metoda najmniejszych kwadratów dla histogramu)
@@ -85,7 +84,6 @@ try:
             dist = getattr(stats, dist_name)
             params = dist.fit(data_clean)
             
-            # Obliczanie błędu dopasowania (SSE)
             pdf = dist.pdf(x, *params)
             sse = np.sum((y - pdf)**2)
             
@@ -124,7 +122,7 @@ try:
         df_ok.to_excel(writer, sheet_name='Parametry_Spółek', index=False)
         df_stat.to_excel(writer, sheet_name='Testy_Statystyczne', index=False)
 
-    print(f"\n✅ ANALIZA ZAKOŃCZONA.")
+    print(f"\nANALIZA ZAKOŃCZONA.")
     print(df_stat[['Parametr', 'Jest Normalny?', 'Najlepszy rozkład']])
 
 except Exception as e:
