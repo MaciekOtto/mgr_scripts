@@ -8,7 +8,7 @@ import seaborn as sns
 input_file = 'dane1000close.xlsx'
 output_file = 'wyniki_shapiro_pelny_okres.xlsx'
 
-print(f"Wczytuję dane z pliku: {input_file}...")
+print(f"Wczytanie danych z pliku: {input_file}...")
 
 try:
     df = pd.read_excel(input_file)
@@ -21,7 +21,7 @@ try:
     df = df.apply(lambda x: pd.to_numeric(x.astype(str).str.replace(',', '.'), errors='coerce'))
     df.dropna(inplace=True)
 
-    print(f"Przeprowadzam test Shapiro-Wilka dla {len(df.columns)} spółek (pełny zakres)...")
+    print(f"Przeprowadzenie testu Shapiro-Wilka dla {len(df.columns)} spółek (pełny zakres)...")
 
     wyniki = []
     for ticker in df.columns:
