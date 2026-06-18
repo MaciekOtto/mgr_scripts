@@ -1,54 +1,28 @@
-"""
-Wykresy porównawcze błędów prognoz — GARCH vs ML
-==================================================
-Wejście:
-  garch_rmse_mae.xlsx  (arkusz 'Surowe': Spółka, Model, RMSE, MAE, N_valid)
-  rf_rmse_mae.xlsx      (arkusz 'Surowe': Spółka, RMSE, MAE, N_valid)
-  lstm_rmse_mae.xlsx
-  svr_rmse_mae.xlsx
-
-Wyjście (folder wykresy_porownanie/):
-  01_boxplot_RMSE_wszystkie_modele.png
-  02_histogram_RMSE_RF.png
-  03_histogram_RMSE_LSTM.png
-  04_histogram_RMSE_SVR.png
-  05_histogram_RMSE_panel_ML.png   (3 panele RF/LSTM/SVR razem)
-
-Winsoryzacja na 1/99 percentylu — TYLKO do wizualizacji (nie zmienia
-wartości w plikach źródłowych), żeby ekstremalne outliery nie rozciągały skali.
-"""
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
-# ── Ustawienia ────────────────────────────────────────────────────────────────
-
+# ── Ustawienia ──
 OUTPUT_FOLDER = 'wykresy_porownanie'
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-GARCH_MODELS_TO_SHOW = ['GARCH', 'GJR-GARCH', 'EGARCH', 'APARCH']  # z pliku garch
+GARCH_MODELS_TO_SHOW = ['GARCH', 'GJR-GARCH', 'EGARCH', 'APARCH']  
 
 sns.set_style('whitegrid')
 plt.rcParams['figure.dpi'] = 150
 
-# ── Wczytanie i scalenie danych ────────────────────────────────────────────────
+# ── Wczytanie i scalenie danych 
 
 def load_all_rmse():
-    """
-    Zwraca jeden długi DataFrame: kolumny ['Spółka', 'Model', 'RMSE', 'MAE']
-    łączący GARCH (4 modele) + RF + LSTM + SVR.
-    """
+
     frames = []
 
-    # GARCH — plik ma już kolumnę Model z 4 wartościami
     df_garch = pd.read_excel('garch_rmse_mae.xlsx', sheet_name='Surowe')
     df_garch = df_garch[df_garch['Model'].isin(GARCH_MODELS_TO_SHOW)]
     frames.append(df_garch[['Spółka', 'Model', 'RMSE', 'MAE']])
 
-    # RF, LSTM, SVR — pliki nie mają kolumny Model, dodajemy ręcznie
     for model_name, filepath in [
         ('RF',   'rf_rmse_mae.xlsx'),
         ('LSTM', 'lstm_rmse_mae.xlsx'),
@@ -59,7 +33,7 @@ def load_all_rmse():
             if 'Model' not in df.columns:
                 df['Model'] = model_name
             df = df[df['Model'] == model_name] if df['Model'].nunique() > 1 else df
-            df['Model'] = model_name  # nadpisz na wszelki wypadek
+            df['Model'] = model_name  
             frames.append(df[['Spółka', 'Model', 'RMSE', 'MAE']])
         except Exception as e:
             print(f"Uwaga: nie wczytano {filepath}: {e}")
@@ -77,18 +51,16 @@ def load_all_rmse():
 
 
 def winsorize(series, lower=0.01, upper=0.99):
-    """Winsoryzacja TYLKO do wizualizacji."""
     lo, hi = series.quantile(lower), series.quantile(upper)
     return series.clip(lo, hi)
 
 
-# ── Wykres 1: Boxplot wszystkich modeli ───────────────────────────────────────
+# ── Wykres 1: Boxplot wszystkich modeli ────
 
 def plot_boxplot_all(df_all):
     df_viz = df_all.copy()
     df_viz['RMSE_wins'] = df_viz.groupby('Model')['RMSE'].transform(winsorize)
 
-    # Sortuj modele po medianie RMSE (od najlepszego)
     order = (df_viz.groupby('Model')['RMSE_wins']
              .median().sort_values().index.tolist())
 
@@ -132,7 +104,7 @@ def plot_histogram_single(df_all, model_name, filename, color):
     print(f"Zapisano: {filename}")
 
 
-# ── Wykres 5: Panel 3 modeli ML razem ────────────────────────────────────────
+# ── Wykres 5: Panel 3 modeli ML razem ──
 
 def plot_panel_ml(df_all):
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
@@ -153,9 +125,7 @@ def plot_panel_ml(df_all):
     plt.savefig(os.path.join(OUTPUT_FOLDER, '05_histogram_RMSE_panel_ML.png'))
     plt.close()
     print("Zapisano: 05_histogram_RMSE_panel_ML.png")
-
-
-# ── Tabela podsumowująca (do wklejenia w pracy) ──────────────────────────────
+─
 
 def export_summary_table(df_all):
     summary = (df_all.groupby('Model')['RMSE']
@@ -177,7 +147,7 @@ def export_summary_table(df_all):
     print(f"\nZapisano: tabela_podsumowujaca.xlsx")
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
+# ── MAIN ───
 
 if __name__ == '__main__':
     df_all = load_all_rmse()
