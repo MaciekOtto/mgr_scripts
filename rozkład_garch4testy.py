@@ -16,7 +16,7 @@ output_excel = 'wyniki_GARCH_testy_statystyczne.xlsx'
 output_folder = 'analiza_rozkladow_garch1'
 os.makedirs(output_folder, exist_ok=True)
 
-print(f"Wczytuję dane: {input_file}...")
+print(f"Wczytanie danych: {input_file}...")
 
 try:
     df_returns = pd.read_excel(input_file)
@@ -68,13 +68,11 @@ try:
 
     for param_name in parametry:
         data = df_ok[param_name].dropna()
-        
-        # Usuwamy 2% skrajnych wartości (outlierów), aby testy były wiarygodne
+  
         q_low, q_high = data.quantile([0.01, 0.99])
         data_clean = data[(data > q_low) & (data < q_high)]
 
-        # 1. Test Normalności (D'Agostino-Pearson)
-        # H0: Dane pochodzą z rozkładu normalnego
+        # 1. Test Normalności
         stat, p_val = stats.normaltest(data_clean)
         
         # 2. Dopasowanie rozkładów i szukanie najlepszego (metoda SSE)
@@ -118,13 +116,13 @@ try:
         plt.savefig(os.path.join(output_folder, f'Rozklad_{param_name}.png'))
         plt.close()
 
-    # Zapis do Excela (dwie zakładki)
+    # Zapis do Excela 
     df_stat = pd.DataFrame(raport_statystyczny)
     with pd.ExcelWriter(output_excel) as writer:
         df_ok.to_excel(writer, sheet_name='Parametry_GARCH', index=False)
         df_stat.to_excel(writer, sheet_name='Testy_Statystyczne', index=False)
 
-    print(f"\n✅ ZAKOŃCZONO. Raport: {output_excel}")
+    print(f"\nZAKOŃCZONO. Raport: {output_excel}")
     print(df_stat[['Parametr', 'Rozkład Normalny?', 'Najlepiej dopasowany']])
 
 except Exception as e:
