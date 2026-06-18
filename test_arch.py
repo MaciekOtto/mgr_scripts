@@ -6,16 +6,15 @@ from statsmodels.stats.diagnostic import het_arch
 
 # --- Ustawienia Plików ---
 input_file = 'dane1000stopy.xlsx' 
-output_file_arima_arch = 'wyniki_ARIMA_ARCH_1000_stopyzw.xlsx' # Zmieniona nazwa
-# Ustawienie rzędów dla modelu ARMA(p,q)
-ARIMA_ORDER = (1, 0, 1) # p=1, d=0, q=1
+output_file_arima_arch = 'wyniki_ARIMA_ARCH_1000_stopyzw.xlsx' 
+ARIMA_ORDER = (1, 0, 1) # p=1, i=0, q=1
 
-print(f"Wczytuję dane (stopy zwrotu) z pliku: {input_file}...")
+print(f"Wczytanie danych z pliku: {input_file}...")
 
 try:
     df_returns = pd.read_excel(input_file)
     
-    # --- Przygotowanie Danych: Indeksowanie i czyszczenie ---
+    # Przygotowanie Danych
     col_data = None
     for col in df_returns.columns:
         if 'data' in col.lower() or 'date' in col.lower():
@@ -27,7 +26,6 @@ try:
         df_returns.set_index(col_data, inplace=True)
         
     for col in df_returns.columns:
-        # Konwersja na float, obsługa przecinków/błędów
         df_returns[col] = pd.to_numeric(df_returns[col].astype(str).str.replace(',', '.'), errors='coerce')
 
     df_returns.dropna(inplace=True)
@@ -52,13 +50,9 @@ try:
         try:
             # 1. Szacowanie Modelu ARMA(1,1)
             model = ARIMA(series, order=ARIMA_ORDER)
-            # USUNIĘCIE: .fit(disp=False) 
             results = model.fit() 
-            
-            # Pobieramy reszty (residuals)
             residuals = results.resid.dropna()
             
-            # Pobieramy parametry AR i MA (tylko dla informacji)
             ar_param = results.params.get('ar.L1')
             ma_param = results.params.get('ma.L1')
 
