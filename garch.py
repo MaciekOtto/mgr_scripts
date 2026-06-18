@@ -8,17 +8,13 @@ import time
 # --- Ustawienia Plików ---
 input_file = 'dane1000stopy.xlsx'
 output_file_garch = 'wyniki_GARCH_1000.xlsx' 
-# Ustalenie nazwy folderu na wykresy
 output_folder = 'wykresy_garch_parametry'
 
-# --- (Reszta kodu wczytującego i szacującego model GARCH jest taka sama) ---
-
-print(f"Wczytuję dane (już jako stopy zwrotu) z pliku: {input_file}...")
+print(f"Wczytanie danych z pliku: {input_file}...")
 
 try:
     df_returns = pd.read_excel(input_file)
     
-    # --- Przygotowanie Danych: Ustawienie indeksu czasowego ---
     col_data = None
     for col in df_returns.columns:
         if 'data' in col.lower() or 'date' in col.lower():
@@ -43,7 +39,7 @@ try:
     wyniki_garch = []
     start_time = time.time()
 
-    print("\nRozpoczynam szacowanie modeli GARCH(1,1) na gotowych stopach zwrotu...")
+    print("\nszacowanie modeli GARCH(1,1) na gotowych stopach zwrotu...")
 
     for i, ticker in enumerate(df_returns.columns):
         series = df_returns[ticker].copy()
@@ -102,16 +98,11 @@ try:
     print(f"Raport zapisano w pliku: {output_file_garch}")
     print("-" * 50)
     
-    # 3. Tworzenie Wykresów Dystrybucji Parametrów i zapis do plików
-    
-    # Importowanie modułu do obsługi ścieżek i tworzenia folderów
     import os
     
-    # Tworzenie folderu na wykresy, jeśli nie istnieje
     os.makedirs(output_folder, exist_ok=True)
     print(f"Wykresy zostaną zapisane w folderze: {output_folder}")
 
-    # Filtrowanie tylko udanych oszacowań do wykresów
     df_plot = df_wyniki_garch[df_wyniki_garch['Status'] == 'OK'].copy()
     
     if not df_plot.empty:
