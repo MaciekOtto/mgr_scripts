@@ -1,23 +1,3 @@
-"""
-Random Forest — Rolling Window OOS — prognozowanie zmienności
-=============================================================
-Wejście:  dane1000stopy.xlsx      (stopy zwrotu)
-Wyjście:  rf_prognozy_oos.parquet (prognozy RF per spółka)
-          rf_rmse_mae.xlsx        (RMSE / MAE + podsumowanie)
-
-Metodologia — identyczna jak GARCH:
-  - TRAIN_SIZE = 1250, TEST_SIZE = 250 (ten sam podział!)
-  - Rolling 1-krokowy: trenuj na t dniach, prognozuj r²_t+1, przesuń o 1
-  - Target: r²_t+1 (realized variance) — identyczny jak w GARCH
-  - Features: lag r² (1-5), lag zwrotów (1-5), rolling std 20d
-
-Optymalizacja czasu (~3-5h na 4 rdzeniach, 3 workery):
-  - RF retrenowany co RETRAIN_EVERY=10 dni zamiast co 1 dzień
-  - Małe drzewa: n_estimators=100, max_depth=10
-  - Multiprocessing po spółkach
-  - Checkpointy co 50 spółek — bezpieczne wznawianie
-"""
-
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
@@ -29,7 +9,7 @@ import glob
 import warnings
 warnings.filterwarnings('ignore')
 
-# ── Ustawienia ────────────────────────────────────────────────────────────────
+# ── Ustawienia ───
 
 INPUT_FILE       = 'dane1000stopy.xlsx'
 CHECKPOINT_DIR   = 'checkpoints_rf'
@@ -39,7 +19,7 @@ OUT_EXCEL        = 'rf_rmse_mae.xlsx'
 TRAIN_SIZE       = 1250
 LAG              = 5
 ROLLING_STD_W    = 20
-RETRAIN_EVERY    = 10    # retrenuj co 10 dni testowych — kluczowe przyspieszenie
+RETRAIN_EVERY    = 10   ]
 
 RF_PARAMS = dict(
     n_estimators     = 100,
@@ -53,13 +33,9 @@ RF_PARAMS = dict(
 N_WORKERS        = max(1, mp.cpu_count() - 1)
 CHECKPOINT_EVERY = 50
 
-# ── Budowanie features ────────────────────────────────────────────────────────
+# ── Budowanie features ──
 
 def build_features(returns_arr):
-    """
-    Zwraca X, y, t_indices dla jednej spółki.
-    Każdy wiersz = jeden dzień t, target = r²_{t+1}.
-    """
     r  = returns_arr.astype(float)
     r2 = r ** 2
     n  = len(r)
@@ -88,7 +64,7 @@ def build_features(returns_arr):
     return df_f[feat_cols].values, df_f['target'].values, df_f['t_idx'].values
 
 
-# ── Jedna spółka ──────────────────────────────────────────────────────────────
+# ── Jedna spółka ──
 
 def process_ticker(ticker, returns_arr, train_size, retrain_every, rf_params):
     X, y, t_idx = build_features(returns_arr)
@@ -147,7 +123,7 @@ def process_ticker(ticker, returns_arr, train_size, retrain_every, rf_params):
     }
 
 
-# ── Batch (jeden worker) ──────────────────────────────────────────────────────
+# ── Batch ──
 
 def process_batch(args):
     (batch_idx, tickers_batch, data_dict,
@@ -173,7 +149,7 @@ def process_batch(args):
     return results
 
 
-# ── Wczytanie danych ──────────────────────────────────────────────────────────
+# ── Wczytanie danych ──
 
 def load_data():
     print(f"Wczytuję dane z: {INPUT_FILE}")
@@ -208,7 +184,7 @@ def load_completed(checkpoint_dir):
     return done, results
 
 
-# ── Zapis ─────────────────────────────────────────────────────────────────────
+# ── Zapis ──
 
 def save_outputs(all_results, test_size):
     metrics  = pd.DataFrame([r['metrics'] for r in all_results])
@@ -224,7 +200,7 @@ def save_outputs(all_results, test_size):
     fi_df = pd.DataFrame()
     if imps:
         arr = np.array(imps)
-        # Nazwy features — tyle ile kolumn w pierwszym imps
+        # Nazwy features 
         n_feat = arr.shape[1]
         names = (
             [f'r2_lag_{k}'  for k in range(1, LAG+1)] +
@@ -259,8 +235,6 @@ def save_outputs(all_results, test_size):
     print(f"Spółek OK:    {metrics['RMSE'].notna().sum()}")
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
-
 if __name__ == '__main__':
     t0 = time.time()
 
@@ -278,7 +252,7 @@ if __name__ == '__main__':
         print(f"Checkpointy: {len(done)} gotowych, {len(remaining)} pozostało")
 
     if not remaining:
-        print("Wszystkie spółki gotowe — zapisuję wyniki...")
+        print("Wszystkie spółki gotowe...")
         save_outputs(existing, TEST_SIZE)
         exit()
 
