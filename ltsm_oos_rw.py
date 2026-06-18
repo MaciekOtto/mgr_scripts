@@ -1,24 +1,3 @@
-"""
-LSTM — Rolling Window OOS — prognozowanie zmienności (wersja CPU)
-=================================================================
-Wejście:  dane1000stopy.xlsx        (stopy zwrotu)
-Wyjście:  lstm_prognozy_oos.parquet
-          lstm_rmse_mae.xlsx
-
-Metodologia — identyczna jak GARCH i RF:
-  - TRAIN_SIZE = 1250, TEST_SIZE = 250
-  - Rolling 1-krokowy: trenuj na t dniach, prognozuj r²_t+1
-  - Target: r²_t+1 (realized variance)
-  - Features: sekwencja ostatnich SEQ_LEN dni [r², |r|, rolling_std]
-
-Optymalizacja pod CPU (~8-12h, 3 workery):
-  - Retrenowanie co RETRAIN_EVERY=50 dni (~5 razy na 250 dni testowych)
-  - Mała sieć: 1 warstwa LSTM (16 jednostek) + Dense
-  - Każdy worker ma osobną sesję TF — multiprocessing działa na CPU
-  - Checkpointy co 50 spółek
-  - TF ograniczony do 1 wątku per worker (unikamy rywalizacji rdzeni)
-"""
-
 import pandas as pd
 import numpy as np
 import time
@@ -28,8 +7,6 @@ import warnings
 import multiprocessing as mp
 warnings.filterwarnings('ignore')
 
-# ── Ustawienia ────────────────────────────────────────────────────────────────
-
 INPUT_FILE       = 'dane1000stopy.xlsx'
 CHECKPOINT_DIR   = 'checkpoints_lstm'
 OUT_PARQUET      = 'lstm_prognozy_oos.parquet'
@@ -37,10 +14,10 @@ OUT_EXCEL        = 'lstm_rmse_mae.xlsx'
 
 TRAIN_SIZE       = 1250
 SEQ_LEN          = 10
-RETRAIN_EVERY    = 50    # rzadziej niż RF — LSTM wolniejszy na CPU
+RETRAIN_EVERY    = 50    
 CHECKPOINT_EVERY = 50
 
-LSTM_UNITS  = 16         # mała sieć = szybko na CPU
+LSTM_UNITS  = 16        
 EPOCHS      = 30
 BATCH_SIZE  = 32
 LR          = 0.001
@@ -81,7 +58,6 @@ def build_sequences(returns_arr):
 # ── Jedna spółka ──────────────────────────────────────────────────────────────
 
 def process_ticker(ticker, returns_arr, train_size, retrain_every):
-    # Import TF wewnątrz funkcji — każdy worker inicjalizuje własną sesję
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['OMP_NUM_THREADS'] = '1'
     import tensorflow as tf
@@ -145,7 +121,7 @@ def process_ticker(ticker, returns_arr, train_size, retrain_every):
             )
             last_model = model
             tf.keras.backend.clear_session()
-            last_model = model  # clear_session nie usuwa obiektu
+            last_model = model 
 
         if last_model is not None:
             forecasts[step] = float(
@@ -192,7 +168,7 @@ def process_batch(args):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def load_data():
-    print(f"Wczytuję dane z: {INPUT_FILE}")
+    print(f"Wczytanie danych z: {INPUT_FILE}")
     df = pd.read_excel(INPUT_FILE)
     date_col = next((c for c in df.columns
                      if 'data' in c.lower() or 'date' in c.lower()), None)
@@ -270,7 +246,7 @@ if __name__ == '__main__':
         print(f"Checkpointy: {len(done)} gotowych, {len(remaining)} pozostało")
 
     if not remaining:
-        print("Wszystkie spółki gotowe — zapisuję wyniki...")
+        print("Wszystkie spółki gotowe — zapis wyników...")
         save_outputs(existing)
         exit()
 
