@@ -1,11 +1,11 @@
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
-# Funkcja do wczytywania tickerów z CSV z dodatkową filtracją
+# Funkcja do wczytywania tickerów z CSV 
 def load_tickers_from_csv(file_path='nasdaq_top5001.csv', max_tickers=1721):
     try:
-        # Wczytaj jako zwykły tekst (bez nagłówków)
+        # Wczytaj jako zwykły tekst 
         with open(file_path, 'r') as f:
             lines = f.readlines()
         
@@ -25,20 +25,24 @@ def load_tickers_from_csv(file_path='nasdaq_top5001.csv', max_tickers=1721):
         return []
 
 # Parametry
-days_back = 2200  # Ostatnie 90 dni
-min_data_ratio = 0.9  # Minimalny procent dni roboczych z danymi
-start_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
-end_date = datetime.now().strftime('%Y-%m-%d')  # Do dziś
+min_data_ratio = 0.9  
+
+start_date = '2020-02-12'
+end_date = '2025-11-13'  
+
 tickers = load_tickers_from_csv(max_tickers=1721)
 if not tickers:
     print("Brak tickerów – użyj przykładowej listy.")
     tickers = ['AAPL', 'MSFT', 'NVDA']  # Fallback
 
-print(f"Pobieranie danych dla {len(tickers)} spółek z okresu {start_date} do {end_date}...")
+print(f"Pobieranie danych dla {len(tickers)} spółek z okresu {start_date} do 2025-11-12...")
 try:
-    # Pobierz pełne dane OHLCV
+    # Pobierz pełne dane 
     data = yf.download(tickers, start=start_date, end=end_date, progress=False, auto_adjust=False)
-    print(f"Pobrano dane dla {len(data.columns.levels[1])} spółek z {len(tickers)} żądanych.")
+    if isinstance(data.columns, pd.MultiIndex):
+        print(f"Pobrano dane dla {len(data.columns.levels[1])} spółek z {len(tickers)} żądanych.")
+    else:
+        print(f"Pobrano dane dla 1 spółki.")
 except Exception as e:
     print(f"Błąd podczas pobierania danych: {e}")
     data = pd.DataFrame()  # Pusta ramka
@@ -47,16 +51,22 @@ if data.empty:
     print("Brak danych – sprawdź tickery lub połączenie internetowe.")
     exit()
 
-# Utwórz zakres wszystkich dni roboczych (5-dniowy tydzień: pon-pt)
-all_business_days = pd.date_range(start=start_date, end=end_date, freq='B')
+# Wyciągamy wyłącznie ceny zamknięcia (Close)
+if isinstance(data.columns, pd.MultiIndex):
+    close_data = data['Close']
+else:
+    close_data = pd.DataFrame({tickers[0]: data['Close']})
+
+# Utwórz zakres wszystkich dni roboczych (5-dniowy tydzień: pon-pt) do 12.11.2025
+all_business_days = pd.date_range(start=start_date, end='2025-11-12', freq='B')
 total_business_days = len(all_business_days)
 
-# Filtruj spółki: tylko te z wystarczającą liczbą danych (na podstawie Close)
+# Filtruj spółki na podstawie dostępności danych
 filtered_tickers = []
 excluded_tickers = []
 for ticker in tickers:
-    if ('Close', ticker) in data.columns:
-        series = data['Close'][ticker].dropna()
+    if ticker in close_data.columns:
+        series = close_data[ticker].dropna()
         data_days = len(series)
         ratio = data_days / total_business_days
         if ratio >= min_data_ratio:
@@ -68,48 +78,11 @@ print(f"Po filtrze: {len(filtered_tickers)} spółek z pełnymi danymi (co najmn
 if excluded_tickers:
     print(f"Wykluczone spółki (ticker, procent danych): {excluded_tickers[:10]}...")
 
-# Przygotuj DataFrame z wszystkimi wskaźnikami
+# Przygotuj DataFrame z uzupełnionymi dniami do pełnych tygodni 5-dniowych
 filled_data = pd.DataFrame(index=all_business_days)
 for ticker in filtered_tickers:
-    # Pobierz podstawowe dane OHLCV i zreindexuj
-    open_price = data['Open'][ticker].reindex(all_business_days).fillna(method='ffill')
-    high = data['High'][ticker].reindex(all_business_days).fillna(method='ffill')
-    low = data['Low'][ticker].reindex(all_business_days).fillna(method='ffill')
-    close = data['Close'][ticker].reindex(all_business_days).fillna(method='ffill')
-    volume = data['Volume'][ticker].reindex(all_business_days).fillna(method='ffill')
-    
-    # Zmiana ceny zamknięcia w procentach
-    pct_change = close.pct_change() * 100
-    pct_change.iloc[0] = 0  # Ustaw 0 dla pierwszego dnia (brak poprzedniej ceny)
-    
-    # Proste średnie kroczące 5-dniowe (SMA5 na Close)
-    #sma5 = close.rolling(window=5).mean().fillna(method='bfill')
-    sma5 = close.rolling(window=5).mean()
-    # Wykładnicze średnie kroczące (EMA12 i EMA26 na Close)
-    ema12 = close.ewm(span=12).mean().fillna(method='bfill')
-    ema26 = close.ewm(span=26).mean().fillna(method='bfill')
-    
-    # MACD: EMA12 - EMA26
-    macd = ema12 - ema26
-    # Sygnał MACD: EMA9 na MACD
-    #macd_signal = macd.ewm(span=9).mean().fillna(method='bfill')
-    
-    # Dzień tygodnia: 1=poniedziałek, 2=wtorek, ..., 5=piątek (tylko dni robocze)
-    weekday = filled_data.index.weekday + 1  # 0=pon -> 1, ..., 4=pt -> 5
-    
-    # Dodaj kolumny do DataFrame
-    filled_data[f'{ticker}_Open'] = open_price
-    filled_data[f'{ticker}_High'] = high
-    filled_data[f'{ticker}_Low'] = low
-    filled_data[f'{ticker}_Close'] = close
-    filled_data[f'{ticker}_Volume'] = volume
-    filled_data[f'{ticker}_Pct_Change'] = pct_change
-    filled_data[f'{ticker}_SMA5'] = sma5
-    filled_data[f'{ticker}_EMA12'] = ema12
-    #filled_data[f'{ticker}_EMA26'] = ema26
-    filled_data[f'{ticker}_MACD'] = macd
-    #filled_data[f'{ticker}_MACD_Signal'] = macd_signal
-    filled_data[f'{ticker}_Weekday'] = weekday
+    # Reindeksowanie do pełnego kalendarza biznesowego i uzupełnienie braków poprzednią wartością (forward fill)
+    filled_data[ticker] = close_data[ticker].reindex(all_business_days).ffill()
 
 # Reset indeksu: data jako pierwsza kolumna
 filled_data.reset_index(inplace=True)
