@@ -6,7 +6,6 @@ from arch import arch_model
 import os
 import warnings
 
-# Wyłączamy ostrzeżenia o braku zbieżności, by nie zaśmiecać konsoli
 warnings.filterwarnings('ignore')
 
 # --- Ustawienia ---
@@ -27,12 +26,11 @@ try:
     df = df.dropna(how='all')
 
     wyniki = []
-    print(f"Analizuję {len(df.columns)} spółek modelem EGARCH...")
+    print(f"Analiza {len(df.columns)} spółek modelem EGARCH...")
 
     for i, ticker in enumerate(df.columns):
         series = df[ticker].dropna()
-        
-        # FILTR: Pomiń spółki, które mają prawie same zera (brak handlu)
+
         if (series == 0).sum() / len(series) > 0.8:
             wyniki.append({'Spółka': ticker, 'Status': 'BŁĄD: Zbyt dużo zer w danych'})
             continue
@@ -40,12 +38,11 @@ try:
         if len(series) < 100:
             continue
 
-        # SKALOWANIE: EGARCH najlepiej działa na liczbach rzędu 1-10
-        # Mnożymy przez 100 (zamiana 0.01 na 1.0)
+        # SKALOWANIE
         series_scaled = series * 100
 
         try:
-            # rescale=True pozwala modelowi automatycznie dobrać mnożnik, jeśli 100 to za mało
+            
             am = arch_model(series_scaled, mean='Constant', vol='EGARCH', p=1, o=1, q=1, rescale=True)
             
             # Próbujemy dopasować model
@@ -68,7 +65,7 @@ try:
                 'Status': 'OK'
             })
         except Exception as e:
-            # Zamiast ogólnego "BŁĄD", zapiszemy co się stało
+            
             wyniki.append({'Spółka': ticker, 'Status': f'BŁĄD: {str(e)[:40]}'})
 
         if (i + 1) % 100 == 0:
@@ -77,12 +74,12 @@ try:
     # Zapis do Excela
     df_res = pd.DataFrame(wyniki)
     df_res.to_excel(output_excel, index=False)
-    print(f"\n✅ Zapisano wyniki do: {output_excel}")
+    print(f"\n Zapisano wyniki do: {output_excel}")
 
     # --- WYKRESY ---
     df_plot = df_res[df_res['Status'] == 'OK'].copy()
     if not df_plot.empty:
-        print("Tworzę wykresy parametrów...")
+        print("Tworzenie wykresy parametrów...")
         for col, title, color in [('Omega','Poziom wariancji bazowej-LOG','gray'),
                                    ('Alpha', 'Wpływ szoku (Alpha)', 'skyblue'), 
                                    ('Gamma', 'Asymetria (Gamma)', 'purple'), 
@@ -102,9 +99,9 @@ try:
             plt.legend()
             plt.savefig(os.path.join(output_folder, f"Rozklad_{col}.png"))
             plt.close()
-        print(f"✅ Wykresy gotowe w folderze: {output_folder}")
+        print(f" Wykresy gotowe w folderze: {output_folder}")
     else:
-        print("🔴 Uwaga: Brak udanych oszacowań OK. Sprawdź błędy w Excelu.")
+        print(" Uwaga: Brak udanych oszacowań OK. Sprawdź Excel.")
 
 except Exception as e:
-    print(f"🔴 Błąd krytyczny skryptu: {e}")
+    print(f" Błąd krytyczny skryptu: {e}")
