@@ -1,23 +1,3 @@
-"""
-SVR — Rolling Window OOS — prognozowanie zmienności
-====================================================
-Wejście:  dane1000stopy.xlsx        (stopy zwrotu)
-Wyjście:  svr_prognozy_oos.parquet
-          svr_rmse_mae.xlsx
-
-Metodologia — identyczna jak GARCH, RF, LSTM:
-  - TRAIN_SIZE = 1250, TEST_SIZE = 250
-  - Rolling 1-krokowy: trenuj na t dniach, prognozuj r²_t+1
-  - Target: r²_t+1 (realized variance)
-  - Features: lag r² (1-5), lag zwrotów (1-5), rolling std 20d
-
-Optymalizacja czasu (~3-5h, 3 workery):
-  - Retrenowanie co RETRAIN_EVERY=25 dni
-  - StandardScaler per okno treningowe (SVR wymaga skalowania)
-  - Multiprocessing po spółkach z checkpointami
-  - Kernel RBF — standardowy wybór dla szeregów czasowych
-"""
-
 import pandas as pd
 import numpy as np
 from sklearn.svm import SVR
@@ -40,7 +20,7 @@ OUT_EXCEL        = 'svr_rmse_mae.xlsx'
 TRAIN_SIZE       = 1250
 LAG              = 5
 ROLLING_STD_W    = 20
-RETRAIN_EVERY    = 25    # co 25 dni — ~10 retrenowań na 250 dni testowych
+RETRAIN_EVERY    = 25    
 
 SVR_PARAMS = dict(
     kernel  = 'rbf',
@@ -52,14 +32,9 @@ SVR_PARAMS = dict(
 N_WORKERS        = max(1, mp.cpu_count() - 1)
 CHECKPOINT_EVERY = 50
 
-# ── Budowanie features ────────────────────────────────────────────────────────
+# ── Budowanie features ─
 
 def build_features(returns_arr):
-    """
-    Identyczne features jak RF:
-      - lag r² (1-5), lag zwrotów (1-5), rolling std 20d
-    Target: r²_t+1
-    """
     r  = returns_arr.astype(float)
     r2 = r ** 2
     n  = len(r)
@@ -119,7 +94,7 @@ def process_ticker(ticker, returns_arr, train_size, retrain_every, svr_params):
             X_tr = X[:cut]
             y_tr = y[:cut]
 
-            # SVR wymaga skalowania — scaler fitowany tylko na danych treningowych
+            # SVR wymaga skalowania 
             scaler  = StandardScaler()
             X_tr_sc = scaler.fit_transform(X_tr)
 
@@ -147,7 +122,7 @@ def process_ticker(ticker, returns_arr, train_size, retrain_every, svr_params):
     }
 
 
-# ── Batch ─────────────────────────────────────────────────────────────────────
+# ── Batch ───
 
 def process_batch(args):
     (batch_idx, tickers_batch, data_dict,
@@ -170,10 +145,10 @@ def process_batch(args):
     return results
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Helpers ───
 
 def load_data():
-    print(f"Wczytuję dane z: {INPUT_FILE}")
+    print(f"Wczytanie danych z: {INPUT_FILE}")
     df = pd.read_excel(INPUT_FILE)
     date_col = next((c for c in df.columns
                      if 'data' in c.lower() or 'date' in c.lower()), None)
@@ -231,7 +206,7 @@ def save_outputs(all_results):
     print(f"Spółek OK:    {metrics['RMSE'].notna().sum()}")
 
 
-# ── MAIN ──────────────────────────────────────────────────────────────────────
+# ── MAIN ──
 
 if __name__ == '__main__':
     t0 = time.time()
@@ -251,7 +226,7 @@ if __name__ == '__main__':
         print(f"Checkpointy: {len(done)} gotowych, {len(remaining)} pozostało")
 
     if not remaining:
-        print("Wszystkie spółki gotowe — zapisuję wyniki...")
+        print("Wszystkie spółki gotowe...")
         save_outputs(existing)
         exit()
 
