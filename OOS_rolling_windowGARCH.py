@@ -1,21 +1,3 @@
-"""
-GARCH Rolling Window OOS — wersja równoległa z checkpointami
-=============================================================
-Uruchom wieczorem, rano masz wyniki.
-
-Jak działa:
-  - Każdy rdzeń procesora dostaje porcję spółek i liczy je niezależnie
-  - Co CHECKPOINT_EVERY spółek wyniki są zapisywane na dysk
-  - Jeśli skrypt się wywróci — wznawiasz od ostatniego checkpointu
-  - Na końcu wszystkie checkpointy są scalane w jeden plik wynikowy
-
-Uruchomienie:
-  python garch_rolling_parallel.py
-
-Wznowienie po przerwie (automatyczne — skrypt sam wykryje checkpointy):
-  python garch_rolling_parallel.py
-"""
-
 import pandas as pd
 import numpy as np
 from arch import arch_model
@@ -28,17 +10,16 @@ from functools import partial
 
 warnings.filterwarnings('ignore')
 
-# ── Ustawienia ────────────────────────────────────────────────────────────────
-
+# ── Ustawienia ─
 INPUT_FILE       = 'dane1000stopy.xlsx'
-CHECKPOINT_DIR   = 'checkpoints_garch'   # folder z częściowymi wynikami
+CHECKPOINT_DIR   = 'checkpoints_garch'   
 OUT_PARQUET      = 'garch_prognozy_oos.parquet'
 OUT_EXCEL        = 'garch_rmse_mae.xlsx'
 
-TRAIN_SIZE       = 1250  # 1500 - 250 = 250 dni OOS (~1 rok handlowy)
+TRAIN_SIZE       = 1250  
 SCALE            = 100
-CHECKPOINT_EVERY = 50    # zapisuj co ile spółek (per worker)
-N_WORKERS        = None  # None = automatycznie (wszystkie rdzenie - 1)
+CHECKPOINT_EVERY = 50  
+N_WORKERS        = None  # None = automatycznie wszystkie rdzenie 
 
 MODELS = [
     ('GARCH',     'Garch',  1, 1, {}),
@@ -47,24 +28,16 @@ MODELS = [
     ('APARCH',    'APARCH', 1, 1, {}),
 ]
 
-# ── Funkcja dla jednej spółki (uruchamiana w osobnym procesie) ────────────────
+# Funkcja dla jednej spółki
 
 def process_ticker(args):
-    """
-    Liczy rolling OOS dla jednej spółki, wszystkie 4 modele.
-    Zwraca słownik z prognozami i metrykami.
-    """
     ticker, series_raw, train_size, scale, models = args
-
     series_full = series_raw * scale
     realized    = series_raw ** 2
     test_size   = len(series_raw) - train_size
-
     result = {'ticker': ticker, 'forecasts': {}, 'metrics': []}
-
     for model_name, vol, p, q, kwargs in models:
         forecasts = np.full(test_size, np.nan)
-
         for step in range(test_size):
             train_data = series_full[:train_size + step]
             try:
@@ -75,9 +48,7 @@ def process_ticker(args):
                 forecasts[step] = fc.variance.values[-1, 0] / (scale ** 2)
             except Exception:
                 forecasts[step] = np.nan
-
         result['forecasts'][model_name] = forecasts
-
         realized_test = realized[train_size:]
         valid = ~np.isnan(forecasts)
         if valid.sum() > 10:
@@ -85,7 +56,6 @@ def process_ticker(args):
             mae  = float(np.mean(np.abs(forecasts[valid] - realized_test[valid])))
         else:
             rmse = mae = np.nan
-
         result['metrics'].append({
             'Spółka':  ticker,
             'Model':   model_name,
@@ -93,66 +63,49 @@ def process_ticker(args):
             'MAE':     mae,
             'N_valid': int(valid.sum()),
         })
-
     return result
 
-
 def process_batch(batch_args):
-    """
-    Liczy rolling OOS dla listy spółek (jedna porcja na worker).
-    Zapisuje checkpoint co CHECKPOINT_EVERY spółek.
-    """
     batch_idx, tickers_batch, data_dict, train_size, scale, models, \
         checkpoint_dir, checkpoint_every = batch_args
-
     os.makedirs(checkpoint_dir, exist_ok=True)
     batch_results = []
-
     for i, ticker in enumerate(tickers_batch):
         series_raw = data_dict[ticker]
         res = process_ticker((ticker, series_raw, train_size, scale, models))
         batch_results.append(res)
-
         # Checkpoint co N spółek
         if (i + 1) % checkpoint_every == 0 or (i + 1) == len(tickers_batch):
             cp_path = os.path.join(checkpoint_dir,
                                    f'batch_{batch_idx:03d}_up_to_{i:04d}.pkl')
             pd.to_pickle(batch_results, cp_path)
-
     return batch_results
 
-
-# ── Wczytanie danych ──────────────────────────────────────────────────────────
+# ── Wczytanie danych ────
 
 def load_data(input_file):
     print(f"Wczytuję dane z: {input_file}")
     df = pd.read_excel(input_file)
-
     date_col = next((c for c in df.columns
                      if 'data' in c.lower() or 'date' in c.lower()), None)
     if date_col:
         df[date_col] = pd.to_datetime(df[date_col])
         df.set_index(date_col, inplace=True)
-
     for col in df.columns:
         df[col] = pd.to_numeric(
             df[col].astype(str).str.replace(',', '.'), errors='coerce')
-
     df.dropna(inplace=True)
     return df
 
 
-# ── Wykrywanie ukończonych spółek z checkpointów ─────────────────────────────
+# ── Wykrywanie ukończonych spółek z checkpointów ──
 
 def load_completed_tickers(checkpoint_dir):
-    """Zwraca set tickerów które już mamy z poprzednich uruchomień."""
     if not os.path.exists(checkpoint_dir):
         return set(), []
-
     completed = set()
     all_results = []
     cp_files = sorted(glob.glob(os.path.join(checkpoint_dir, '*.pkl')))
-
     for cp_file in cp_files:
         try:
             batch = pd.read_pickle(cp_file)
@@ -162,42 +115,33 @@ def load_completed_tickers(checkpoint_dir):
                     all_results.append(res)
         except Exception as e:
             print(f"  Uwaga: nie mogę wczytać {cp_file}: {e}")
-
     return completed, all_results
 
-
-# ── Scalanie wyników ──────────────────────────────────────────────────────────
+# ── Scalanie wyników ───
 
 def build_outputs(all_results, test_index, out_parquet, out_excel):
     model_names = [m[0] for m in MODELS]
-
-    # Słownik prognoz: {model: {ticker: array}}
     forecasts_dict = {m: {} for m in model_names}
     metrics_list   = []
-
     for res in all_results:
         ticker = res['ticker']
         for model_name, fc_array in res['forecasts'].items():
             forecasts_dict[model_name][ticker] = fc_array
         metrics_list.extend(res['metrics'])
-
-    # DataFrame z prognozami (MultiIndex kolumn)
     frames = []
     for model_name in model_names:
         df_fc = pd.DataFrame(forecasts_dict[model_name], index=test_index)
         df_fc.columns = pd.MultiIndex.from_product([[model_name], df_fc.columns])
         frames.append(df_fc)
-
     df_all = pd.concat(frames, axis=1)
     df_all.to_parquet(out_parquet)
     print(f"Prognozy zapisane: {out_parquet}  "
           f"({os.path.getsize(out_parquet)/1e6:.1f} MB)")
 
-    # Excel z metrykami
+
     df_metrics   = pd.DataFrame(metrics_list)
     pivot_rmse   = df_metrics.pivot(index='Spółka', columns='Model', values='RMSE')
     pivot_mae    = df_metrics.pivot(index='Spółka', columns='Model', values='MAE')
-
     summary_rows = []
     for mn in model_names:
         rv = pivot_rmse[mn].dropna()
@@ -226,9 +170,6 @@ def build_outputs(all_results, test_index, out_parquet, out_excel):
     print("\n── Podsumowanie MAE (mediana po spółkach) ──")
     print(pivot_mae.median().round(8).to_string())
 
-
-# ── MAIN ──────────────────────────────────────────────────────────────────────
-
 if __name__ == '__main__':
 
     total_start = time.time()
@@ -243,7 +184,7 @@ if __name__ == '__main__':
     print(f"Spółek: {len(tickers)} | Dni: {T} | "
           f"Train: {TRAIN_SIZE} | Test: {TEST_SIZE}")
 
-    # 2. Sprawdź które spółki już są gotowe (wznawianie)
+    # 2. Checkpointy
     completed_tickers, existing_results = load_completed_tickers(CHECKPOINT_DIR)
 
     if completed_tickers:
@@ -251,7 +192,7 @@ if __name__ == '__main__':
         remaining = [t for t in tickers if t not in completed_tickers]
         print(f"Pozostało do policzenia: {len(remaining)} spółek.")
     else:
-        print("\nBrak checkpointów — zaczynam od nowa.")
+        print("\nBrak checkpointów - od nowa.")
         remaining = tickers
 
     if not remaining:
@@ -259,14 +200,14 @@ if __name__ == '__main__':
         build_outputs(existing_results, test_index, OUT_PARQUET, OUT_EXCEL)
         exit()
 
-    # 3. Słownik danych (tylko potrzebne spółki)
+    # 3. Słownik danych 
     data_dict = {t: df[t].values for t in remaining}
 
     # 4. Podział na batche dla workerów
     n_workers = N_WORKERS or max(1, mp.cpu_count() - 1)
     print(f"\nLiczba workerów: {n_workers} (z {mp.cpu_count()} dostępnych rdzeni)")
 
-    # Dzielimy remaining na n_workers równych porcji
+    # Dzieli remaining na n_workers równych porcji
     batches = np.array_split(remaining, n_workers)
     batches = [list(b) for b in batches if len(b) > 0]
 
@@ -278,7 +219,7 @@ if __name__ == '__main__':
 
     print(f"Podział: {len(batches)} batchy, "
           f"~{len(remaining)//len(batches)} spółek na batch")
-    print(f"\nStart obliczeń... (zostaw komputer na noc)\n")
+    print(f"\nStart obliczeń... \n")
 
     # 5. Równoległe obliczenia
     with mp.Pool(processes=n_workers) as pool:
@@ -295,4 +236,4 @@ if __name__ == '__main__':
 
     elapsed = time.time() - total_start
     print(f"\nCałkowity czas: {elapsed/3600:.2f} godz.")
-    print("GOTOWE. Możesz teraz uruchomić skrypt ML.")
+    print("GOTOWE.")
