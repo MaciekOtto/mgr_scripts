@@ -36,31 +36,27 @@ try:
     wyniki_aparch = []
     start_time = time.time()
 
-    print("\nRozpoczynam szacowanie modeli APARCH(1,1)...")
+    print("\nszacowanie modeli APARCH(1,1)...")
 
     for i, ticker in enumerate(df_returns.columns):
         series = df_returns[ticker].dropna()
         
-        # Skalowanie (kluczowe dla APARCH)
         series_scaled = series * 100
         
         if len(series_scaled) < 100: 
             continue
 
         try:
-            # vol='APARCH', p=1, o=1, q=1 -> o=1 odpowiada za parametr Gamma
-            # dist='Normal' lub 't' (studenta) - tutaj zostawiamy Normal dla porównywalności
             am = arch_model(series_scaled, mean='Constant', vol='APARCH', p=1, o=1, q=1, rescale=True)
             res = am.fit(disp='off', show_warning=False)
 
             p = res.params
             
-            # W APARCH mamy: omega, alpha, gamma, beta oraz delta (parametr potęgowy)
             omega = p.get('omega', np.nan)
             alpha = p.get('alpha[1]', np.nan)
             gamma = p.get('gamma[1]', np.nan)
             beta = p.get('beta[1]', np.nan)
-            delta = p.get('delta', np.nan) # Specyficzne dla APARCH
+            delta = p.get('delta', np.nan) 
             
             wyniki_aparch.append({
                 'Spółka': ticker,
@@ -103,19 +99,15 @@ try:
 
         for col, color, filename in params:
             plt.figure(figsize=(10, 6))
-            # Usuwamy outliery (percentyle 1-99), by wykres był czytelny
             data = df_plot[col].dropna()
             q_low, q_high = data.quantile([0.01, 0.99])
             data_filtered = data[(data > q_low) & (data < q_high)]
             
             sns.histplot(data_filtered, kde=False, bins=40, color=color)
-            #plt.axvline(data_filtered.mean(), color='red', linestyle='--', label=f'Średnia: {data_filtered.mean():.3f}')
             
             if 'Gamma' in col:
-                #plt.axvline(0, color='black', alpha=0.5)
                 plt.title('Rozkład parametru Gamma (APARCH)')
             elif 'Delta' in col:
-                #plt.axvline(2, color='blue', linestyle=':', label='Standardowy GARCH (2.0)')
                 plt.title('Rozkład parametru Delta (APARCH)')
             else:
                 plt.title(f'Rozkład parametru {col}')
