@@ -1,36 +1,11 @@
-"""
-Test Diebolda-Mariano (1995) przeprowadzony niezależnie dla każdej spółki,
-dla wybranych par modeli (np. GARCH vs Random Forest, GARCH vs LSTM,
-GJR-GARCH vs SVR itd.). Funkcja straty: błąd kwadratowy (squared error)
-względem zrealizowanej wariancji (r^2).
-
-POPRAWKI względem oryginału (zobacz komentarze NAPRAWIONO poniżej):
-1. Plik GARCH nie ma już metadanych pandas, więc kolumny MultiIndex wracają
-   jako spłaszczone, dodatkowo "urwane" stringi typu
-   ("('GARCH', 'NVDA_Close'", '') (zauważ brakujący nawias zamykający).
-   Stary parser (c.strip("()").split(",", 1)) sobie z tym nie radzi.
-   Naprawiono: parsowanie regexem wyłapującym dwa cytowane podciągi.
-2. Kolumna z datami w pliku GARCH nazywa się dosłownie "('Data', '')",
-   a nie "Data"/"index" - stary kod jej nigdy nie znajdował, więc zostawał
-   domyślny RangeIndex, a pd.to_datetime() zamieniał 0,1,2,... w nanosekundy
-   od 1970-01-01 (czyli śmieciowe, niemal identyczne daty).
-3. Pliki RF/LSTM/SVR NIE MAJĄ w ogóle kolumny z datą - tylko RangeIndex.
-   Stary kod brał w takiej sytuacji PIERWSZY TICKER i próbował go
-   zinterpretować jako kolumnę z datą (kasując dane). Naprawiono:
-   wykrywamy brak daty i dopasowujemy obserwacje POZYCYJNIE do końcówki
-   okna testowego realized variance (patrz UWAGA w align_ml_forecast).
-"""
-
 import re
 import pandas as pd
 import numpy as np
 from scipy import stats
 from pathlib import Path
 
-# ============================== KONFIGURACJA ==============================
-
 RETURNS_FILE = "dane1000stopy.xlsx"
-TEST_SIZE = 250  # zgodnie ze schematem expanding window TRAIN=1250/TEST=250
+TEST_SIZE = 250  
 ALPHA = 0.05
 
 GARCH_FAMILY_FILE = "garch_prognozy_oos_fixed.parquet"
@@ -53,7 +28,6 @@ MODEL_PAIRS = [
 
 OUTPUT_FILE = "wyniki_diebold_mariano.xlsx"
 
-# regex wyłapujący cytowane podciągi niezależnie od stanu nawiasów wokół nich
 _QUOTED = re.compile(r"'([^']+)'")
 
 # ============================================================================
@@ -69,12 +43,7 @@ def load_realized_variance(returns_file: str, test_size: int) -> pd.DataFrame:
 
 
 def _parse_garch_column(col_label) -> tuple | None:
-    """Wyciąga (model, ticker) z (potencjalnie zniekształconej) etykiety
-    kolumny MultiIndex zapisanej jako string, np.
-    ("('GARCH', 'NVDA_Close'", '')  ->  ('GARCH', 'NVDA_Close')
-    Zwraca None jeśli to nie jest kolumna model/ticker (np. data, index)."""
     if isinstance(col_label, tuple):
-        # właściwy MultiIndex (gdyby metadane pandas akurat były zachowane)
         if len(col_label) >= 2:
             return str(col_label[0]), str(col_label[1])
         return None
@@ -87,8 +56,6 @@ def _parse_garch_column(col_label) -> tuple | None:
 
 
 def _find_date_column(columns) -> object | None:
-    """Znajduje kolumnę z datą wśród (zniekształconych) etykiet kolumn.
-    W pliku GARCH ta kolumna ma dosłowną etykietę "('Data', '')"."""
     for c in columns:
         if isinstance(c, tuple) and len(c) >= 1 and str(c[0]) == "Data":
             return c
@@ -101,12 +68,8 @@ def _find_date_column(columns) -> object | None:
 
 
 def load_garch_family(path: str, tickers: list, test_size: int) -> dict:
-    """Wczytuje GARCH parquet i odtwarza (model, ticker) nawet jeśli plik
-    nie ma już metadanych pandas / poprawnego MultiIndexu kolumn."""
-
     raw = pd.read_parquet(path)
 
-    # NAPRAWIONO: szukaj prawdziwej nazwy kolumny z datą, nie literału "Data"/"index"
     date_col = _find_date_column(raw.columns)
     if date_col is not None:
         raw = raw.set_index(date_col)
@@ -121,7 +84,6 @@ def load_garch_family(path: str, tickers: list, test_size: int) -> dict:
 
     print("Zakres dat GARCH:", raw.index.min(), raw.index.max())
 
-    # NAPRAWIONO: parsowanie modelu/tickera regexem, odporne na zniekształcone nawiasy
     by_model = {}
     unparsed = []
     for c in raw.columns:
@@ -153,12 +115,7 @@ def load_garch_family(path: str, tickers: list, test_size: int) -> dict:
 
     return out
 
-
 def load_forecast_wide(path: str, tickers: list) -> pd.DataFrame:
-    """Wczytuje plik prognoz ML. Zwraca dane TAK JAK SĄ w pliku (kolumny =
-    tickery), z oryginalnym indeksem (RangeIndex jeśli plik nie ma dat).
-    Dopasowanie dat robione jest później w main(), bo wymaga znajomości
-    realized variance."""
     raw = pd.read_parquet(path)
 
     cols_lower = [str(c).lower() for c in raw.columns]
@@ -181,9 +138,6 @@ def load_forecast_wide(path: str, tickers: list) -> pd.DataFrame:
         wide = wide.sort_index()
         wide = wide[~wide.index.duplicated(keep="last")]
     else:
-        # format wide. NAPRAWIONO: nie zgaduj kolumny z datą biorąc pierwszą
-        # kolumnę "na pewniaka" - sprawdź najpierw, czy w ogóle jest jakaś
-        # kolumna z datą (po nazwie), zanim zinterpretujesz cokolwiek jako datę.
         date_col = _find_date_column(raw.columns)
         if isinstance(raw.index, pd.DatetimeIndex):
             wide = raw.sort_index()
@@ -193,9 +147,6 @@ def load_forecast_wide(path: str, tickers: list) -> pd.DataFrame:
             raw = raw[raw.index.notna()]
             wide = raw.sort_index()
         else:
-            # brak jakiejkolwiek informacji o dacie w pliku - zostaw indeks
-            # taki jak jest (np. RangeIndex); dopasowanie pozycyjne zrobimy
-            # w main() względem realized variance.
             wide = raw
 
         wide.columns = [str(c).replace("_Close", "").replace("_forecast", "") for c in wide.columns]
@@ -205,20 +156,8 @@ def load_forecast_wide(path: str, tickers: list) -> pd.DataFrame:
 
 
 def align_ml_forecast(wide: pd.DataFrame, rv_index: pd.DatetimeIndex, test_size: int) -> pd.DataFrame:
-    """Dopasowuje prognozy ML do dat realized variance.
 
-    UWAGA / ZAŁOŻENIE: pliki RF/LSTM/SVR nie zawierają żadnej kolumny z datą
-    (sprawdzone - tylko RangeIndex), a mają o 1 obserwację mniej niż GARCH
-    (249 vs 250), co sugeruje utratę PIERWSZEGO dnia okna testowego (typowe
-    przy lagowanych cechach w ML). Dopasowujemy więc prognozy do OSTATNICH
-    `len(wide)` dat z realized variance (czyli do "końca" okna testowego).
-
-    Jeśli to założenie jest błędne (np. brakujący dzień jest na końcu, nie
-    na początku, albo przyczyna jest inna), zmień tę funkcję - np. podając
-    explicit listę dat z innego źródła.
-    """
     if isinstance(wide.index, pd.DatetimeIndex):
-        # plik już ma realne daty (np. format "long" z kolumną date) - nic nie robimy
         return wide.iloc[-test_size:]
 
     n = len(wide)
