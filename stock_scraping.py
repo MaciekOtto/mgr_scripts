@@ -89,6 +89,6 @@ filled_data.reset_index(inplace=True)
 filled_data.rename(columns={'index': 'Data'}, inplace=True)
 
 # Zapisz do Excel
-output_file = 'notowania_nasdaq_uzup.xlsx'
+output_file = 'dane1000close.xlsx'
 filled_data.to_excel(output_file, index=False)
 print(f"Dane zapisane do pliku {output_file}. Liczba kolumn (oprócz daty): {len(filled_data.columns) - 1}")
