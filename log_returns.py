@@ -1,0 +1,34 @@
+import pandas as pd
+import numpy as np
+
+def calculate_log_returns(input_file, output_file):
+    print(f"Wczytywanie danych z pliku: {input_file}...")
+    
+    # 1. Wczytanie pliku 
+    try:
+        df_close = pd.read_excel(input_file, index_col=0, parse_dates=True)
+    except FileNotFoundError:
+        print(f"Błąd: Nie znaleziono pliku '{input_file}' w obecnym folderze.")
+        return
+
+    # 2. Obliczenie logarytmicznych stóp zwrotu
+    # np.log() oblicza logarytm naturalny, a df.shift(1) bierze ceny z poprzedniego okresu
+    print("Obliczanie logarytmicznych stóp zwrotu...")
+    df_stopy = np.log(df_close / df_close.shift(1))
+
+    # 3. Usunięcie pierwszego wiersza 
+    df_stopy = df_stopy.dropna(how='all')
+
+    df_stopy.index = pd.to_datetime(df_stopy.index).strftime('%Y-%m-%d')
+    # 4. Zapisanie do nowego pliku
+    print(f"Zapisywanie wyników do pliku: {output_file}...")
+    df_stopy.to_excel(output_file)
+    
+    print("Gotowe! Transformacja zakończona sukcesem.")
+
+# --- Uruchomienie skryptu ---
+if __name__ == "__main__":
+    PLIK_WEJSCIOWY = 'dane1000close.xlsx' 
+    PLIK_WYJSCIOWY = 'dane1000stopy.xlsx'
+    
+    calculate_log_returns(PLIK_WEJSCIOWY, PLIK_WYJSCIOWY)
