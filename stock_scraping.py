@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # Funkcja do wczytywania tickerów z CSV 
-def load_tickers_from_csv(file_path='nasdaq_top5001.csv', max_tickers=1721):
+def load_tickers_from_csv(file_path='nasdaq_top500.csv', max_tickers=1721):
     try:
         # Wczytaj jako zwykły tekst 
         with open(file_path, 'r') as f:
