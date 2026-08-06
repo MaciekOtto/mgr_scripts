@@ -1,30 +1,45 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
-INPUT_FILE = "wyniki_ADF_1000_spolek.xlsx"
+INPUT_FILE = "wyniki_ADF_1000_stp.xlsx"
 OUTPUT_PLOT = "histogramy_adf_close.png"
 
-#Wczytanie danych
-raw = pd.read_excel(INPUT_FILE, header=None)
-raw = raw.set_index(0).T 
+# 1. Wczytanie pliku
+df = pd.read_excel(INPUT_FILE)
 
-raw.columns = raw.iloc[0].index 
-adf_stat = pd.to_numeric(raw["Statystyka ADF"], errors="coerce").dropna()
-p_value = pd.to_numeric(raw["p-value"], errors="coerce").dropna()
+# Usuwamy ewentualne ukryte spacje z nazw kolumn
+df.columns = df.columns.astype(str).str.strip()
 
-#Histogramy
+# 2. Zamiana przecinków na kropki i konwersja na liczby
+adf_stat = pd.to_numeric(
+    df["Statystyka ADF"].astype(str).str.replace(',', '.'), 
+    errors="coerce"
+).dropna()
+
+p_value = pd.to_numeric(
+    df["p-value"].astype(str).str.replace(',', '.'), 
+    errors="coerce"
+).dropna()
+
+# 3. Tworzenie histogramów
 fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
+# Wykres Statystyka ADF - powrót do domyślnej skali (z wartościami ujemnymi)
 axes[0].hist(adf_stat, bins=40, color="lightgray", edgecolor="black", alpha=0.8)
 axes[0].set_title("Rozkład statystyki ADF")
 axes[0].set_xlabel("Statystyka ADF")
 axes[0].set_ylabel("Liczba spółek")
 
-axes[1].hist(p_value, bins=40, color="lightgray", edgecolor="black", alpha=0.8)
+# Wykres p-value - koszyki i oś X sztywno w przedziale [0, 1] (brak ujemnych wartości)
+p_bins = np.linspace(0, 1, 41)
+
+axes[1].hist(p_value, bins=p_bins, color="lightgray", edgecolor="black", alpha=0.8)
 axes[1].axvline(0.05, color="red", linestyle="--", linewidth=2, label="p = 0.05")
 axes[1].set_title("Rozkład p-value testu ADF")
 axes[1].set_xlabel("p-value")
 axes[1].set_ylabel("Liczba spółek")
+axes[1].set_xlim(0, 1)    # Skala p-value rozpoczyna się idealnie od 0
 axes[1].legend()
 
 fig.suptitle("Rozkład wyników testu ADF dla cen zamknięcia", fontsize=13)
