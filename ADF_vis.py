@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 INPUT_FILE = "wyniki_ADF_1000_stp.xlsx"
-OUTPUT_PLOT = "histogramy_adf_close.png"
+OUTPUT_PLOT = "histogramy_adf.png"
 
 # 1. Wczytanie pliku
 df = pd.read_excel(INPUT_FILE)
@@ -42,7 +42,7 @@ axes[1].set_ylabel("Liczba spółek")
 axes[1].set_xlim(0, 1)    # Skala p-value rozpoczyna się idealnie od 0
 axes[1].legend()
 
-fig.suptitle("Rozkład wyników testu ADF dla cen zamknięcia", fontsize=13)
+fig.suptitle("Rozkład wyników testu ADF", fontsize=13)
 fig.tight_layout(rect=[0, 0, 1, 0.95])
 fig.savefig(OUTPUT_PLOT, dpi=150)
 
