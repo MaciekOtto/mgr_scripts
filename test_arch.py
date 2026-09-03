@@ -57,7 +57,7 @@ try:
             ma_param = results.params.get('ma.L1')
 
             # 2. Przeprowadzenie Testu ARCH
-            lm_test = het_arch(residuals, nlags=10) # nlags to liczba opóźnień do testu
+            lm_test = het_arch(residuals, nlags=10) 
             
             p_value_arch = lm_test[1] 
             
