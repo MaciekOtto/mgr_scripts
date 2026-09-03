@@ -10,8 +10,8 @@ warnings.filterwarnings('ignore')
 
 # --- Ustawienia ---
 input_file = 'dane1000stopy.xlsx'
-output_excel = 'WYNIKI_EGARCH_FINAL1.xlsx'
-output_folder = 'wykresy_egarch_parametr1'
+output_excel = 'WYNIKI_EGARCH.xlsx'
+output_folder = 'wykresy_egarch_parametr'
 os.makedirs(output_folder, exist_ok=True)
 
 try:
@@ -45,7 +45,7 @@ try:
             
             am = arch_model(series_scaled, mean='Constant', vol='EGARCH', p=1, o=1, q=1, rescale=True)
             
-            # Próbujemy dopasować model
+            # Dopasowanie modelu
             res = am.fit(disp='off', show_warning=False)
 
             # Pobieranie parametrów
@@ -87,7 +87,7 @@ try:
             plt.figure(figsize=(10,6))
             data_to_plot = df_plot[col].dropna()
             
-            # Usuwamy wartości odstające (outliers) dla lepszej czytelności wykresu
+            # Usuwanie outlierów
             q_low = data_to_plot.quantile(0.01)
             q_hi  = data_to_plot.quantile(0.99)
             data_filtered = data_to_plot[(data_to_plot > q_low) & (data_to_plot < q_hi)]
