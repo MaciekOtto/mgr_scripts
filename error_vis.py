@@ -41,7 +41,7 @@ def load_all_rmse():
     df_all = pd.concat(frames, ignore_index=True)
     df_all = df_all.dropna(subset=['RMSE'])
 
-    # Usuwamy duplikaty (Spółka, Model) — gdyby się gdzieś powtórzyły
+    # Usuwanie duplikatow
     df_all = df_all.drop_duplicates(subset=['Spółka', 'Model'])
 
     print(f"Wczytano {len(df_all)} rekordów:")
@@ -70,8 +70,7 @@ def plot_boxplot_all(df_all):
     sns.stripplot(data=df_viz, x='Model', y='RMSE_wins', order=order,
                   color='black', alpha=0.15, size=2, jitter=0.25, ax=ax)
 
-    plt.title('Rozkład RMSE prognoz zmienności — porównanie modeli\n'
-              '(wartości winsoryzowane na percentylach 1/99 dla celów wizualizacji)',
+    plt.title('Rozkład RMSE prognoz zmienności — porównanie modeli\n',
               fontsize=11)
     plt.xlabel('Model')
     plt.ylabel('RMSE')
@@ -93,7 +92,7 @@ def plot_histogram_single(df_all, model_name, filename, color):
     plt.axvline(data.median(), color='red', linestyle='--',
                label=f'Mediana = {data.median():.6f}')
     plt.title(f'Rozkład RMSE prognoz zmienności — model {model_name}\n'
-             f'(N = {len(data)} spółek, wartości winsoryzowane 1/99 pctl)',
+             f'(N = {len(data)} spółek)',
              fontsize=11)
     plt.xlabel('RMSE')
     plt.ylabel('Liczba spółek')
@@ -119,7 +118,7 @@ def plot_panel_ml(df_all):
         ax.set_xlabel('RMSE')
         ax.set_ylabel('Liczba spółek' if model_name == 'RF' else '')
 
-    plt.suptitle('Rozkład RMSE — modele uczenia maszynowego',
+    plt.suptitle('Rozkład RMSE — metody uczenia maszynowego',
                  fontsize=12, y=1.02)
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_FOLDER, '05_histogram_RMSE_panel_ML.png'))
