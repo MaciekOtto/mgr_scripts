@@ -6,7 +6,7 @@ sns.set_theme(style="whitegrid")
 plt.rcParams.update({'font.size': 12})
 
 # 1. Wczytanie danych z wynikami regresji przekrojowej
-df_regr = pd.read_excel('ff3_regresja_przekrojowa_2.xlsx')
+df_regr = pd.read_excel('ff3_regresja_przekrojowa_2.xlsx') #proszę stworzyć nowy plik i go tutaj umieścić, tylko z arkuszem 'Regresja przekrojowa' z pliku ff3_regresja_przekrojowa
 
 # 2. Przygotowanie wykresu
 plt.figure(figsize=(10, 6))
