@@ -27,7 +27,7 @@ RF_PARAMS = dict(
     max_features     = 'sqrt',
     min_samples_leaf = 5,
     random_state     = 42,
-    n_jobs           = 1,  # 1 bo multiprocessing jest po spółkach
+    n_jobs           = 1,  
 )
 
 N_WORKERS        = max(1, mp.cpu_count() - 1)
@@ -189,7 +189,7 @@ def load_completed(checkpoint_dir):
 def save_outputs(all_results, test_size):
     metrics  = pd.DataFrame([r['metrics'] for r in all_results])
 
-    # Prognozy — tylko spółki z pełnym szeregiem testowym
+    # Prognozy 
     fc_dict  = {r['ticker']: r['forecasts'] for r in all_results
                 if len(r['forecasts']) == test_size}
     pd.DataFrame(fc_dict).to_parquet(OUT_PARQUET)
