@@ -19,7 +19,7 @@ OUT_EXCEL        = 'garch_rmse_mae.xlsx'
 TRAIN_SIZE       = 1250  
 SCALE            = 100
 CHECKPOINT_EVERY = 50  
-N_WORKERS        = None  # None = automatycznie wszystkie rdzenie 
+N_WORKERS        = None  # wszystkie rdzenie 
 
 MODELS = [
     ('GARCH',     'Garch',  1, 1, {}),
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     # 3. Słownik danych 
     data_dict = {t: df[t].values for t in remaining}
 
-    # 4. Podział na batche dla workerów
+    # 4. Podział na batche
     n_workers = N_WORKERS or max(1, mp.cpu_count() - 1)
     print(f"\nLiczba workerów: {n_workers} (z {mp.cpu_count()} dostępnych rdzeni)")
 
