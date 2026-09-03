@@ -4,11 +4,11 @@ Regresja przekrojowa — czynniki Famy-Frencha (3-czynnikowy)
 Cel: wyjaśnić dlaczego jedne spółki są trudniejsze do prognozowania niż inne.
 
 Kroki:
-  1. Dla każdej spółki estymuj ekspozycje na czynniki FF3 (time-series regression):
+  1. Dla każdej spółki estymowane sa ekspozycje na czynniki FF3:
        r_it - RF_t = α_i + β_mkt_i*(Mkt-RF_t) + β_smb_i*SMB_t + β_hml_i*HML_t + ε_it
-     → otrzymujesz β_mkt_i, β_smb_i, β_hml_i dla każdej spółki
+     → otrzymujemy β_mkt_i, β_smb_i, β_hml_i dla każdej spółki
 
-  2. Regresja przekrojowa (cross-sectional):
+  2. Regresja przekrojowa:
        RMSE_i = a + b1*β_mkt_i + b2*β_smb_i + b3*β_hml_i + u_i
      → czy ekspozycja na czynniki ryzyka wyjaśnia błąd prognozy?
 
@@ -16,7 +16,7 @@ Kroki:
 
 Wejście:
   - dane1000stopy.xlsx              (stopy zwrotu spółek)
-  - F-F_Research_Data_Factors_daily.txt  (czynniki FF — zmień nazwę jeśli inna)
+  - F-F_Research_Data_Factors_daily.txt 
   - garch_rmse_mae.xlsx             (RMSE z modeli — używamy GJR-GARCH jako benchmark)
   - rf_rmse_mae.xlsx, lstm_rmse_mae.xlsx, svr_rmse_mae.xlsx
 
@@ -35,11 +35,11 @@ warnings.filterwarnings('ignore')
 # ── Ustawienia ────────────────────────────────────────────────────────────────
 
 RETURNS_FILE = 'dane1000stopy.xlsx'
-FF_FILE      = 'F-F_Research_Data_Factors_daily.txt'  # zmień jeśli inna nazwa
+FF_FILE      = 'F-F_Research_Data_Factors_daily.txt' 
 
-# Pliki z RMSE — jeden per model
+# Pliki z RMSE 
 RMSE_FILES = {
-    'GARCH':     ('garch_rmse_mae.xlsx',  'GJR-GARCH'),   # (plik, kolumna w pivocie)
+    'GARCH':     ('garch_rmse_mae.xlsx',  'GJR-GARCH'),  
     'RF':        ('rf_rmse_mae.xlsx',     None),
     'LSTM':      ('lstm_rmse_mae.xlsx',   None),
     'SVR':       ('svr_rmse_mae.xlsx',    None),
@@ -53,16 +53,13 @@ OUT_WYNIKI = 'ff3_regresja_przekrojowa.xlsx'
 def load_ff_factors(ff_file):
     import io
     
-    # Wczytujemy cały plik do pamięci
     with open(ff_file, 'r') as f:
         lines = f.readlines()
-    
-    # Szukamy gdzie zaczynają się dane (pierwsza linia z 8-cyfrową datą)
+
     data_lines = []
     for line in lines:
         clean_line = line.strip()
         if not clean_line: continue
-        # Sprawdzamy czy pierwszy "wyraz" to 8 cyfr (data YYYYMMDD)
         first_word = clean_line.split()[0]
         if first_word.isdigit() and len(first_word) == 8:
             data_lines.append(clean_line)
@@ -70,10 +67,8 @@ def load_ff_factors(ff_file):
     if not data_lines:
         raise ValueError(f"Nie znaleziono danych w pliku {ff_file}!")
 
-    # Tworzymy DF ze stringów (rozdzielając po spacjach)
     df = pd.DataFrame([l.split() for l in data_lines])
     
-    # Zazwyczaj FF daily ma 5 kolumn: Date, Mkt-RF, SMB, HML, RF
     df = df.iloc[:, :5] 
     df.columns = ['Date', 'Mkt_RF', 'SMB', 'HML', 'RF']
     
@@ -101,31 +96,22 @@ def load_returns(returns_file):
         df[col] = pd.to_numeric(
             df[col].astype(str).str.replace(',', '.'), errors='coerce')
 
-    # UWAGA: nie usuwamy tu całych wierszy przez dropna() na całej macierzy —
-    # przy ~1000 spółkach jeden brak w jednej kolumnie kasowałby cały dzień
-    # dla wszystkich pozostałych. Braki są obsługiwane per-spółka (maska
-    # w estimate_betas), więc tutaj tylko liczymy je informacyjnie.
     n_missing = int(df.isna().sum().sum())
     print(f"Stopy zwrotu: {len(df.columns)} spółek, {len(df)} dni "
-          f"(braki: {n_missing} komórek — obsłużone per-spółka w regresji)")
+          f"(braki: {n_missing} komórek — obsłużone w regresji)")
     return df
 
 
 # ── Wczytanie RMSE ────────────────────────────────────────────────────────────
 
 def load_rmse_all(rmse_files):
-    """
-    Wczytuje RMSE per spółka dla każdego modelu.
-    Zwraca DataFrame: index=Spółka, kolumny=nazwy modeli.
-    """
+  
     dfs = []
     for model_name, (filepath, col_name) in rmse_files.items():
         try:
-            # Arkusz 'Surowe' ma kolumny: Spółka, Model, RMSE, MAE
             df_raw = pd.read_excel(filepath, sheet_name='Surowe')
 
             if col_name:
-                # GARCH — plik zawiera wiele modeli, wybieramy konkretny
                 df_raw = df_raw[df_raw['Model'] == col_name]
 
             df_raw = df_raw[['Spółka', 'RMSE']].copy()
@@ -134,7 +120,7 @@ def load_rmse_all(rmse_files):
             dfs.append(df_raw)
             print(f"Wczytano RMSE: {model_name} ({len(df_raw)} spółek)")
         except Exception as e:
-            print(f"Uwaga: nie mogę wczytać {filepath}: {e}")
+            print(f"Uwaga: nie mozna wczytać {filepath}: {e}")
 
     if not dfs:
         raise ValueError("Brak plików RMSE — sprawdź ścieżki.")
@@ -149,16 +135,12 @@ def load_rmse_all(rmse_files):
 
 def estimate_betas(df_returns, df_ff):
     """
-    Dla każdej spółki estymuje model FF3 na całym dostępnym oknie:
+    Dla każdej spółki estymacja modelu FF3:
       r_it - RF_t = α + β_mkt*(Mkt-RF) + β_smb*SMB + β_hml*HML + ε
 
-    Zwraca DataFrame z kolumnami: beta_mkt, beta_smb, beta_hml, alpha, R2
     """
-    # Reindeksujemy czynniki FF do kalendarza stóp zwrotu i uzupełniamy
-    # braki metodą forward-fill (np. różnice w dniach wolnych między rynkami)
     df_ff_aligned = df_ff.reindex(df_returns.index).ffill()
 
-    # Dni sprzed pierwszej obserwacji FF nie da się wypełnić — usuwamy je
     df_ff_aligned = df_ff_aligned.dropna()
 
     common_idx = df_returns.index.intersection(df_ff_aligned.index)
@@ -213,8 +195,6 @@ def cross_sectional_regression(df_bety, df_rmse, dep_var):
     Regresja przekrojowa:
       RMSE_i = a + b1*β_mkt_i + b2*β_smb_i + b3*β_hml_i + u_i
 
-    dep_var: nazwa kolumny z df_rmse (np. 'GARCH', 'RF', 'RMSE_srednia')
-    Zwraca słownik z wynikami.
     """
     # Łączymy bety z RMSE
     df = df_bety[['beta_mkt', 'beta_smb', 'beta_hml']].join(
@@ -228,9 +208,9 @@ def cross_sectional_regression(df_bety, df_rmse, dep_var):
 
     # Model FF3
     X_ff3 = sm.add_constant(df[['beta_mkt', 'beta_smb', 'beta_hml']])
-    ols_ff3 = sm.OLS(y, X_ff3).fit(cov_type='HC3')  # heteroskedastyczność
+    ols_ff3 = sm.OLS(y, X_ff3).fit(cov_type='HC3')  
 
-    # Model CAPM (tylko beta_mkt)
+    # Model CAPM 
     X_capm = sm.add_constant(df[['beta_mkt']])
     ols_capm = sm.OLS(y, X_capm).fit(cov_type='HC3')
 
@@ -243,7 +223,6 @@ def cross_sectional_regression(df_bety, df_rmse, dep_var):
 
 
 def format_results(reg_results):
-    """Formatuje wyniki regresji do tabeli."""
     rows = []
     for res in reg_results:
         if res is None:
@@ -288,8 +267,8 @@ if __name__ == '__main__':
     print("\nStatystyki bet (mediana):")
     print(df_bety[['beta_mkt', 'beta_smb', 'beta_hml', 'R2']].median().round(4))
 
-    # 3. Regresja przekrojowa — dla każdego modelu osobno + średnia
-    dep_vars = list(df_rmse.columns)  # GARCH, RF, LSTM, SVR, RMSE_srednia
+    # 3. Regresja przekrojowa — dla każdego modelu osobno
+    dep_vars = list(df_rmse.columns) 
     reg_results = []
     for dv in dep_vars:
         print(f"\nRegresja przekrojowa — zmienna zależna: {dv}")
@@ -310,11 +289,10 @@ if __name__ == '__main__':
         df_tabela.to_excel(writer, sheet_name='Regresja_przekrojowa', index=False)
         df_bety.join(df_rmse).to_excel(writer, sheet_name='Dane_do_regresji')
 
-        # Osobny arkusz per model — czytelniejszy format
         for res in reg_results:
             if res is None:
                 continue
-            dv = res['dep_var'][:20]  # max 31 znaków w nazwie arkusza Excel
+            dv = res['dep_var'][:20]  
             summary_rows = []
             for model_type, label in [('ff3', 'FF3'), ('capm', 'CAPM')]:
                 ols = res[model_type]
