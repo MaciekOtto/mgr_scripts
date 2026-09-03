@@ -10,7 +10,7 @@ raw = pd.read_excel(INPUT_FILE)
 # Pierwsza kolumna jako indeks
 raw = raw.set_index(raw.columns[0])
 
-# Wyciągam p-value dla testu ARCH
+# Wyciąganie p-value dla testu ARCH
 p_value = pd.to_numeric(raw["p_value_ARCH"], errors="coerce").dropna()
 
 # Tworzenie pojedynczego wykresu 
