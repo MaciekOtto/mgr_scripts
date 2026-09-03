@@ -48,7 +48,7 @@ for c in df.columns:
 df.columns = pd.MultiIndex.from_tuples(new_cols)
 
 
-# 3. indeks
+# 3. indeksowanie
 if "index" in df.columns:
     df = df.set_index("index")
 
@@ -59,7 +59,7 @@ print("Pierwsze kolumny po naprawie:")
 print(df.columns[:5])
 
 
-# 4. zapis bez pandas metadata
+# 4. zapis
 table_fixed = pa.Table.from_pandas(
     df,
     preserve_index=True
