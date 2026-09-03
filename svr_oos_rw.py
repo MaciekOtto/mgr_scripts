@@ -94,7 +94,7 @@ def process_ticker(ticker, returns_arr, train_size, retrain_every, svr_params):
             X_tr = X[:cut]
             y_tr = y[:cut]
 
-            # SVR wymaga skalowania 
+            # Skalowanie 
             scaler  = StandardScaler()
             X_tr_sc = scaler.fit_transform(X_tr)
 
