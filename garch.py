@@ -39,7 +39,7 @@ try:
     wyniki_garch = []
     start_time = time.time()
 
-    print("\nszacowanie modeli GARCH(1,1) na gotowych stopach zwrotu...")
+    print("\nszacowanie modeli GARCH(1,1) na stopach zwrotu...")
 
     for i, ticker in enumerate(df_returns.columns):
         series = df_returns[ticker].copy()
@@ -114,7 +114,7 @@ try:
         plt.xlabel('Alpha ($\\alpha$)')
         plt.ylabel('Liczba Spółek')
         plt.savefig(os.path.join(output_folder, '01_Rozklad_Alpha_ARCH.png'))
-        plt.close() # Zamknięcie figury, aby zwolnić pamięć
+        plt.close() 
 
         # --- Wykres 2: Beta (GARCH) ---
         plt.figure(figsize=(10, 6))
