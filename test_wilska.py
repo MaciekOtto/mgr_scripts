@@ -27,7 +27,7 @@ try:
     for ticker in df.columns:
         series = df[ticker].dropna()
         
-        # Test Shapiro-Wilka
+        # Test Shapiro-Wilksa
         stat, p_val = shapiro(series)
         
         wyniki.append({
@@ -37,11 +37,11 @@ try:
             'Czy Rozkład Normalny (p>0.05)': 'TAK' if p_val > 0.05 else 'NIE'
         })
 
-    # Tworzenie DataFrame i zapis
+    # Zapis wyników
     df_wyniki = pd.DataFrame(wyniki)
     df_wyniki.to_excel(output_file, index=False)
 
-    # --- Szybkie podsumowanie wizualne ---
+    # --- Podsumowanie wizualne ---
     counts = df_wyniki['Czy Rozkład Normalny (p>0.05)'].value_counts()
     
     plt.figure(figsize=(8, 6))
@@ -57,7 +57,7 @@ try:
     print(f"Wyniki zapisano w: {output_file}")
     print("Wykres podsumowujący zapisano jako: podsumowanie_shapiro_pelny_okres.png")
     
-    # Wyświetlenie wniosku w konsoli
+    # Wyświetlenie wniosku 
     if 'NIE' in counts.index:
         proc_nie = (counts['NIE'] / len(df.columns)) * 100
         print(f"\nUWAGA: {proc_nie:.2f}% spółek NIE posiada rozkładu normalnego.")
