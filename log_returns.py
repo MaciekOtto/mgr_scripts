@@ -12,7 +12,6 @@ def calculate_log_returns(input_file, output_file):
         return
 
     # 2. Obliczenie logarytmicznych stóp zwrotu
-    # np.log() oblicza logarytm naturalny, a df.shift(1) bierze ceny z poprzedniego okresu
     print("Obliczanie logarytmicznych stóp zwrotu...")
     df_stopy = np.log(df_close / df_close.shift(1))
 
