@@ -57,7 +57,7 @@ try:
     df_res = pd.DataFrame(wyniki)
     df_ok = df_res[df_res['Status'] == 'OK'].copy()
 
-    # --- ANALIZA STATYSTYCZNA ROZKŁADÓW ---
+    # --- Testy ---
     print("\nRozpoczynam testowanie rozkładów parametrów...")
     
     parametry = ['Omega', 'Alpha', 'Gamma', 'Beta', 'Persystencja']
@@ -101,7 +101,7 @@ try:
             'Najlepszy rozkład': best_dist
         })
 
-        # --- WYKRES DOPASOWANIA ---
+        # --- Wykres dopasaowania ---
         plt.figure(figsize=(10, 6))
         sns.histplot(data_clean, kde=False, stat="density", color='lightgray', label='Dane empiryczne')
         
