@@ -38,7 +38,7 @@ try:
         if len(series) < 150: continue
 
         try:
-            # Model APARCH: o=1 (Asymetria), p=1, q=1
+            # Model APARCH: o=1, p=1, q=1
             am = arch_model(series * 100, mean='Constant', vol='APARCH', p=1, o=1, q=1, rescale=True)
             res = am.fit(disp='off', show_warning=False)
 
@@ -63,7 +63,7 @@ try:
     df_res = pd.DataFrame(wyniki_raw)
     df_ok = df_res[df_res['Status'] == 'OK'].copy()
 
-    ## --- ANALIZA STATYSTYCZNA ---
+    ## --- Testy ---
     print("\nPrzeprowadzam testy p-value dla rozkładów: Normalny, t-Studenta, Log-normalny, F...")
     
     parametry = ['Alpha (APARCH)', 'Beta (APARCH)', 'Omega (APARCH)', 'Gamma (APARCH)', 'Delta (APARCH)']
@@ -103,7 +103,7 @@ try:
         res_row.update(p_values)
         raport_stat.append(res_row)
 
-        # --- WYBÓR NAJLEPSZEGO ROZKŁADU (Najwyższe p-value) ---
+        # --- Wybór najlepszego rozkładu (Najwyższe p-value) ---
         mapping = {
             'p-val Normalny': ('norm', 'Normalny', 'blue'),
             'p-val t-Student': ('t', 't-Student', 'red'),
@@ -118,7 +118,7 @@ try:
         res_row['Rekomendowany Rozkład'] = best_name
         res_row['Najwyższe p-value'] = p_values[best_key]
 
-        # --- WYKRES Z NAJLEPSZĄ KRZYWĄ ---
+        # --- Wykres z najlepszą ---
         plt.figure(figsize=(10, 6))
         # Histogram danych
         sns.histplot(data_clean, kde=False, bins=40,stat="density", color='lightgray', label='Dane empiryczne')
