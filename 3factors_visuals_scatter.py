@@ -6,7 +6,7 @@ sns.set_theme(style="whitegrid")
 plt.rcParams.update({'font.size': 12})
 
 # 1. Wczytanie danych 
-df = pd.read_excel('ff3_regresja_przekrojowa_vis.xlsx')
+df = pd.read_excel('ff3_regresja_przekrojowa_vis.xlsx') #proszę stworzyć nowy plik i go tutaj umieścić, plik excel tylko z arkuszem 'Dane do regresji' z pliku ff3_regresja_przekrojowa
 fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 
 color_garch = '#1f77b4' # Niebieski
