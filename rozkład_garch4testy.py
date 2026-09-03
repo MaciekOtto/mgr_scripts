@@ -59,7 +59,7 @@ try:
     df_results = pd.DataFrame(wyniki_garch)
     df_ok = df_results[df_results['Status'] == 'OK'].copy()
 
-    # --- ANALIZA ROZKŁADÓW ---
+    # --- Testy ---
     print("\nAnaliza rozkładów parametrów...")
     
     parametry = ['Omega (GARCH)', 'Alpha (GARCH)', 'Beta (GARCH)', 'Suma_AB']
@@ -101,7 +101,7 @@ try:
             'Najlepiej dopasowany': best_dist
         })
 
-        # --- WYKRES DOPASOWANIA ---
+        # --- Wykres dopasowania ---
         plt.figure(figsize=(10, 6))
         sns.histplot(data_clean, kde=False, bins=40,stat="density", color='lightblue', label='Dane (GARCH)')
         
