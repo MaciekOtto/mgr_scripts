@@ -82,7 +82,7 @@ try:
     
     print(f"\nSzacowanie zakończone. Czas: {time.time() - start_time:.2f} s.")
 
-    # GENEROWANIE WYKRESÓW 
+    # --- Generowanie wykresów --- 
     df_plot = df_wyniki[df_wyniki['Status'] == 'OK'].copy()
     
     if not df_plot.empty:
