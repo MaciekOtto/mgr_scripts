@@ -2,23 +2,23 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime
 
-# Funkcja do wczytywania tickerów z CSV 
+# Wczytywania tickerów z CSV 
 def load_tickers_from_csv(file_path='nasdaq_top500.csv', max_tickers=1721):
     try:
-        # Wczytaj jako zwykły tekst 
+         
         with open(file_path, 'r') as f:
             lines = f.readlines()
         
         tickers = []
         for line in lines:
-            ticker = line.strip().upper()  # Usuń spacje, zamień na wielkie litery
-            if ticker and ticker.isalpha() and 1 <= len(ticker) <= 5:  # Tylko litery, 1-5 znaków
+            ticker = line.strip().upper()  
+            if ticker and ticker.isalpha() and 1 <= len(ticker) <= 5: 
                 tickers.append(ticker)
         
-        # Usuń duplikaty, zachowując kolejność
+        # Usuwanie duplikaty
         unique_tickers = list(dict.fromkeys(tickers))
         tickers = unique_tickers[:max_tickers]
-        print(f"Załadowano {len(tickers)} poprawnych tickerów z pliku (zachowując kolejność): {tickers[:10]}...")  # Pokaż pierwsze 10
+        print(f"Załadowano {len(tickers)} poprawnych tickerów z pliku (zachowując kolejność): {tickers[:10]}...") 
         return tickers
     except Exception as e:
         print(f"Błąd podczas wczytywania pliku CSV: {e}")
@@ -33,11 +33,11 @@ end_date = '2025-11-13'
 tickers = load_tickers_from_csv(max_tickers=1721)
 if not tickers:
     print("Brak tickerów – użyj przykładowej listy.")
-    tickers = ['AAPL', 'MSFT', 'NVDA']  # Fallback
+    tickers = ['AAPL', 'MSFT', 'NVDA']  
 
 print(f"Pobieranie danych dla {len(tickers)} spółek z okresu {start_date} do 2025-11-12...")
 try:
-    # Pobierz pełne dane 
+    # Pobieranie pełnych danych 
     data = yf.download(tickers, start=start_date, end=end_date, progress=False, auto_adjust=False)
     if isinstance(data.columns, pd.MultiIndex):
         print(f"Pobrano dane dla {len(data.columns.levels[1])} spółek z {len(tickers)} żądanych.")
@@ -45,19 +45,19 @@ try:
         print(f"Pobrano dane dla 1 spółki.")
 except Exception as e:
     print(f"Błąd podczas pobierania danych: {e}")
-    data = pd.DataFrame()  # Pusta ramka
+    data = pd.DataFrame()  
 
 if data.empty:
     print("Brak danych – sprawdź tickery lub połączenie internetowe.")
     exit()
 
-# Wyciągamy wyłącznie ceny zamknięcia (Close)
+# Wyłącznie ceny zamknięcia (Close)
 if isinstance(data.columns, pd.MultiIndex):
     close_data = data['Close']
 else:
     close_data = pd.DataFrame({tickers[0]: data['Close']})
 
-# Utwórz zakres wszystkich dni roboczych (5-dniowy tydzień: pon-pt) do 12.11.2025
+# Utwórz zakres wszystkich dni roboczych (5-dniowy tydzień: pon-pt)
 all_business_days = pd.date_range(start=start_date, end='2025-11-12', freq='B')
 total_business_days = len(all_business_days)
 
@@ -78,7 +78,6 @@ print(f"Po filtrze: {len(filtered_tickers)} spółek z pełnymi danymi (co najmn
 if excluded_tickers:
     print(f"Wykluczone spółki (ticker, procent danych): {excluded_tickers[:10]}...")
 
-# Przygotuj DataFrame z uzupełnionymi dniami do pełnych tygodni 5-dniowych
 filled_data = pd.DataFrame(index=all_business_days)
 for ticker in filtered_tickers:
     # Reindeksowanie do pełnego kalendarza biznesowego i uzupełnienie braków poprzednią wartością (forward fill)
@@ -88,7 +87,7 @@ for ticker in filtered_tickers:
 filled_data.reset_index(inplace=True)
 filled_data.rename(columns={'index': 'Data'}, inplace=True)
 
-# Zapisz do Excel
+# Zapisanie do Excel
 output_file = 'dane1000close.xlsx'
 filled_data.to_excel(output_file, index=False)
 print(f"Dane zapisane do pliku {output_file}. Liczba kolumn (oprócz daty): {len(filled_data.columns) - 1}")
