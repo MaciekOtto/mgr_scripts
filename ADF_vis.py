@@ -8,7 +8,7 @@ OUTPUT_PLOT = "histogramy_adf.png"
 # 1. Wczytanie pliku
 df = pd.read_excel(INPUT_FILE)
 
-# Usuwamy ewentualne ukryte spacje z nazw kolumn
+# czyszczenie kolumn
 df.columns = df.columns.astype(str).str.strip()
 
 # 2. Zamiana przecinków na kropki i konwersja na liczby
@@ -25,13 +25,13 @@ p_value = pd.to_numeric(
 # 3. Tworzenie histogramów
 fig, axes = plt.subplots(1, 2, figsize=(13, 5))
 
-# Wykres Statystyka ADF - powrót do domyślnej skali (z wartościami ujemnymi)
+# Wykres Statystyka ADF 
 axes[0].hist(adf_stat, bins=40, color="lightgray", edgecolor="black", alpha=0.8)
 axes[0].set_title("Rozkład statystyki ADF")
 axes[0].set_xlabel("Statystyka ADF")
 axes[0].set_ylabel("Liczba spółek")
 
-# Wykres p-value - koszyki i oś X sztywno w przedziale [0, 1] (brak ujemnych wartości)
+# Wykres p-value 
 p_bins = np.linspace(0, 1, 41)
 
 axes[1].hist(p_value, bins=p_bins, color="lightgray", edgecolor="black", alpha=0.8)
@@ -39,7 +39,7 @@ axes[1].axvline(0.05, color="red", linestyle="--", linewidth=2, label="p = 0.05"
 axes[1].set_title("Rozkład p-value testu ADF")
 axes[1].set_xlabel("p-value")
 axes[1].set_ylabel("Liczba spółek")
-axes[1].set_xlim(0, 1)    # Skala p-value rozpoczyna się idealnie od 0
+axes[1].set_xlim(0, 1)    # Skala p-value od 0
 axes[1].legend()
 
 fig.suptitle("Rozkład wyników testu ADF", fontsize=13)
