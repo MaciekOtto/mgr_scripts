@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import skew, kurtosis
 
 INPUT_FILE = "dane1000stopy.xlsx"
-OUTPUT_XLSX = "statystyki_opisowe_final.xlsx"
+OUTPUT_XLSX = "statystyki_opisowe.xlsx"
 OUTPUT_PLOT = "histogramy_statystyk.png"
 
 # wczytanie danych
