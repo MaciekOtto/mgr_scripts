@@ -58,7 +58,7 @@ try:
     df_res = pd.DataFrame(wyniki_raw)
     df_ok = df_res[df_res['Status'] == 'OK'].copy()
 
-    # --- ANALIZA STATYSTYCZNA ---
+    # --- Testy ---
     print("\nPrzeprowadzam testy p-value dla rozkładów: Normalny, t-Studenta, Log-normalny, F...")
     
     
@@ -100,7 +100,7 @@ try:
         res_row.update(p_values)
         raport_stat.append(res_row)
 
-        # --- WYBÓR NAJLEPSZEGO ROZKŁADU (Najwyższe p-value) ---
+        # --- Wybór najlepszego rozkładu (Najwyższe p-value) ---
         mapping = {
             'p-val Normalny': ('norm', 'Normalny', 'blue'),
             'p-val t-Student': ('t', 't-Student', 'red'),
@@ -115,7 +115,7 @@ try:
         res_row['Rekomendowany Rozkład'] = best_name
         res_row['Najwyższe p-value'] = p_values[best_key]
 
-        # --- WYKRES Z NAJLEPSZĄ KRZYWĄ ---
+        # --- Wykres z najlepszą krzywą ---
         plt.figure(figsize=(10, 6))
         # Histogram danych
         sns.histplot(data_clean, kde=False,bins=40, stat="density", color='lightgray', label='Dane empiryczne')
