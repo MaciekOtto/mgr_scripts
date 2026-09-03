@@ -41,7 +41,7 @@ try:
     for i, ticker in enumerate(df_returns.columns):
         series = df_returns[ticker].dropna()
         
-        # Skalowanie (kluczowe dla APARCH)
+        # Skalowanie
         series_scaled = series * 100
         
         if len(series_scaled) < 100: 
@@ -100,7 +100,7 @@ try:
 
         for col, color, filename in params:
             plt.figure(figsize=(10, 6))
-            # Usuwam outliery, by wykres był czytelny
+            # Usuwanie outlierów, by wykres byl czytelniejszy
             data = df_plot[col].dropna()
             q_low, q_high = data.quantile([0.01, 0.99])
             data_filtered = data[(data > q_low) & (data < q_high)]
