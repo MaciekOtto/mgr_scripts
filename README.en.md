@@ -76,11 +76,11 @@ pip install -r requirements.txt
 
 - `nasdaq_top500.csv` — the input ticker list, included in this repository.
 - `dane1000close.xlsx`, `dane1000stopy.xlsx` — generated locally by `stock_scraping.py` and `log_returns.py`; **not included in the repository** (size / data pulled live from Yahoo Finance).
-- `F-F_Research_Data_Factors_daily.txt` — daily Fama-French factors (Mkt-RF, SMB, HML, RF), downloaded from [Kenneth French's data library (Dartmouth)](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html); **not included in the repository**.
+- `F-F_Research_Data_Factors_daily.txt` — daily Fama-French factors (Mkt-RF, SMB, HML, RF), downloaded from [Kenneth French's data library (Dartmouth)](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html);
 
 ## Known Limitations / TODO
 
 - Input/output file paths are hardcoded in the scripts (no `argparse` or config file).
 - The `*_blankvisuals.py` files are earlier/alternate versions of the main GARCH-family estimation scripts (without the diagnostics section) — kept in the repository for reference, pending cleanup.
 - Pipeline step 10 (`3factors_R2_visuals.py`, `3factors_visuals_scatter.py`) currently requires manually splitting out specific sheets from `ff3_regresja_przekrojowa.xlsx` into separate files — automating this is planned.
-- No `requirements.txt`/`.gitignore` currently in the repository (to be added).
+
