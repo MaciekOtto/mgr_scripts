@@ -1,27 +1,27 @@
 # Podstawowe biblioteki do analizy danych
-pandas
-numpy
-scipy
+pandas==2.3.3
+numpy==2.3.4
+scipy==1.16.3
 
 # Wizualizacje
-matplotlib
-seaborn
+matplotlib==3.10.7
+seaborn==0.13.2
 
 # Modele ekonometryczne (GARCH-rodzina, ADF, ARIMA, regresja, HAC)
-arch
-statsmodels
+arch==8.0.0
+statsmodels==0.14.6
 
 # Modele uczenia maszynowego (Random Forest, SVR)
-scikit-learn
+scikit-learn==1.7.2
 
 # Sieć LSTM
-tensorflow
+tensorflow==2.20.0
 
 # Pobieranie danych giełdowych
-yfinance
+yfinance==0.2.66
 
 # Format przechowywania prognoz (garch/RF/LSTM/SVR *.parquet)
-pyarrow
+pyarrow==23.0.1
 
 # Odczyt/zapis plików .xlsx (wymagane przez pandas przy pracy z Excelem)
-openpyxl
+openpyxl==3.1.5
