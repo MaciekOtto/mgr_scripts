@@ -1,0 +1,27 @@
+# Podstawowe biblioteki do analizy danych
+pandas
+numpy
+scipy
+
+# Wizualizacje
+matplotlib
+seaborn
+
+# Modele ekonometryczne (GARCH-rodzina, ADF, ARIMA, regresja, HAC)
+arch
+statsmodels
+
+# Modele uczenia maszynowego (Random Forest, SVR)
+scikit-learn
+
+# Sieć LSTM
+tensorflow
+
+# Pobieranie danych giełdowych
+yfinance
+
+# Format przechowywania prognoz (garch/RF/LSTM/SVR *.parquet)
+pyarrow
+
+# Odczyt/zapis plików .xlsx (wymagane przez pandas przy pracy z Excelem)
+openpyxl
