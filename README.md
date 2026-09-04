@@ -49,7 +49,7 @@ Repozytorium ma obecnie płaską strukturę (wszystkie skrypty w katalogu głów
 
 ## Wymagania
 
-Skrypty testowane z Pythonem 3.10+. Kluczowe zależności:
+Skrypty testowane z Pythonem 3.11.0. Kluczowe zależności (pełna lista z przypiętymi wersjami w `requirements.txt`):
 
 ```
 pandas
