@@ -76,11 +76,11 @@ pip install -r requirements.txt
 
 - `nasdaq_top500.csv` — lista tickerów wejściowych, znajduje się w repozytorium.
 - `dane1000close.xlsx`, `dane1000stopy.xlsx` — pliki generowane lokalnie przez `stock_scraping.py` i `log_returns.py`; **nie są dołączone do repozytorium** (rozmiar / dane pobierane na bieżąco z Yahoo Finance).
-- `F-F_Research_Data_Factors_daily.txt` — dzienne czynniki Famy-Frencha (Mkt-RF, SMB, HML, RF), pobierane ze strony [Kennetha Frencha (Dartmouth)](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html); **nie jest dołączony do repozytorium**.
+- `F-F_Research_Data_Factors_daily.txt` — dzienne czynniki Famy-Frencha (Mkt-RF, SMB, HML, RF), pobierane ze strony [Kennetha Frencha (Dartmouth)](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html); 
 
 ## Znane ograniczenia / rzeczy do poprawy
 
 - Ścieżki plików wejściowych/wyjściowych są zapisane na sztywno w kodzie (brak `argparse`/pliku konfiguracyjnego).
 - Pliki `*_blankvisuals.py` to wcześniejsze/alternatywne wersje głównych skryptów estymacji GARCH-rodziny (bez części diagnostycznej) — pozostawione w repozytorium jako punkt odniesienia, docelowo do uporządkowania.
 - Kroki 10. w pipeline (`3factors_R2_visuals.py`, `3factors_visuals_scatter.py`) wymagają obecnie ręcznego wydzielenia odpowiednich arkuszy z pliku `ff3_regresja_przekrojowa.xlsx` do osobnych plików — planowana automatyzacja tego kroku.
-- Brak `requirements.txt`/`.gitignore` w repozytorium (do dodania).
+
