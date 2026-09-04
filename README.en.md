@@ -49,7 +49,7 @@ The repository currently has a flat structure (all scripts in the root directory
 
 ## Requirements
 
-Scripts tested with Python 3.10+. Key dependencies:
+Scripts tested with Python 3.11.0. Key dependencies (full pinned list in `requirements.txt`):
 
 ```
 pandas
