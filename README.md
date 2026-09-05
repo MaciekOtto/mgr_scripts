@@ -2,7 +2,7 @@
 
 Repozytorium zawiera kod źródłowy (Python) wykorzystany w empirycznej części pracy magisterskiej poświęconej porównaniu klasycznych modeli rodziny GARCH (GARCH, EGARCH, GJR-GARCH, APARCH) oraz metod uczenia maszynowego (Random Forest, LSTM, SVR) w prognozowaniu zmienności stóp zwrotu, w kontekście słabej formy hipotezy rynku efektywnego (EMH) oraz hipotezy rynku adaptacyjnego (AMH).
 
-Próba badawcza obejmuje **1000 spółek notowanych na NASDAQ**, dla których wykorzystano dzienne ceny zamknięcia z okresu **12.02.2020 – 13.11.2025**, pobrane za pomocą biblioteki `yfinance`.
+Próba badawcza obejmuje **1000 spółek notowanych na NASDAQ**, dla których wykorzystano dzienne ceny zamknięcia z okresu **12.02.2020 - 13.11.2025**, pobrane za pomocą biblioteki `yfinance`.
 
 ## Spis treści
 
@@ -82,5 +82,5 @@ pip install -r requirements.txt
 
 - Ścieżki plików wejściowych/wyjściowych są zapisane na sztywno w kodzie (brak `argparse`/pliku konfiguracyjnego).
 - Pliki `*_blankvisuals.py` to wcześniejsze/alternatywne wersje głównych skryptów estymacji GARCH-rodziny (bez części diagnostycznej) — pozostawione w repozytorium jako punkt odniesienia, docelowo do uporządkowania.
-- Kroki 10. w pipeline (`3factors_R2_visuals.py`, `3factors_visuals_scatter.py`) wymagają obecnie ręcznego wydzielenia odpowiednich arkuszy z pliku `ff3_regresja_przekrojowa.xlsx` do osobnych plików — planowana automatyzacja tego kroku.
+- Kroki 10. w pipeline (`3factors_R2_visuals.py`, `3factors_visuals_scatter.py`) wymagają obecnie ręcznego wydzielenia odpowiednich arkuszy z pliku `ff3_regresja_przekrojowa.xlsx` do osobnych plików - planowana automatyzacja tego kroku.
 
