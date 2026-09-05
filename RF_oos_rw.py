@@ -1,3 +1,33 @@
+"""
+RF_oos_rw.py - Prognozy out-of-sample: Random Forest
+
+Dla każdej spółki trenuje model Random Forest (100 drzew) do
+prognozowania zmienności (realized variance, r²) na podstawie cech
+opóźnionych (5 opóźnień r² oraz 5 opóźnień stóp zwrotu, LAG=5) w
+schemacie rozszerzającego się okna (TRAIN_SIZE=1250, model
+przetrenowywany okresowo co RETRAIN_EVERY kroków, nie po każdej
+obserwacji). Obliczenia zrównoleglone, z checkpointami.
+
+Wejście: dane1000stopy.xlsx
+Wyjście: rf_prognozy_oos.parquet, rf_rmse_mae.xlsx,
+         checkpoints_rf/
+
+----------------------------------------------------------------------
+
+RF_oos_rw.py - Out-of-sample forecasts: Random Forest
+
+For each company, trains a Random Forest model (100 trees) to forecast
+volatility (realized variance, r²) using lagged features (5 lags of r²
+and 5 lags of returns, LAG=5) in an expanding-window scheme
+(TRAIN_SIZE=1250, the model is periodically retrained every
+RETRAIN_EVERY steps rather than at every observation). Computation is
+parallelized, with checkpoints.
+
+Input: dane1000stopy.xlsx
+Output: rf_prognozy_oos.parquet, rf_rmse_mae.xlsx,
+        checkpoints_rf/
+"""
+
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
