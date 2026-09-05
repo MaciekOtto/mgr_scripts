@@ -1,4 +1,4 @@
-# Modele GARCH a metody uczenia maszynowego w prognozowaniu zmienności — skrypty do pracy magisterskiej
+# Modele GARCH a metody uczenia maszynowego w prognozowaniu zmienności - skrypty do pracy magisterskiej
 
 Repozytorium zawiera kod źródłowy (Python) wykorzystany w empirycznej części pracy magisterskiej poświęconej porównaniu klasycznych modeli rodziny GARCH (GARCH, EGARCH, GJR-GARCH, APARCH) oraz metod uczenia maszynowego (Random Forest, LSTM, SVR) w prognozowaniu zmienności stóp zwrotu, w kontekście słabej formy hipotezy rynku efektywnego (EMH) oraz hipotezy rynku adaptacyjnego (AMH).
 
@@ -32,20 +32,20 @@ Repozytorium ma obecnie płaską strukturę (wszystkie skrypty w katalogu głów
 | **Naprawa formatu danych** | `fix_garchparquet.py` | Naprawia nazwy kolumn MultiIndex w pliku `garch_prognozy_oos.parquet` (problem z serializacją `np.str_`) |
 | **Test Diebolda-Mariano** | `test_diebolda_mariano.py` | Porównuje trafność prognoz par modeli GARCH vs. ML (błąd kwadratowy) → `wyniki_diebold_mariano.xlsx` |
 | **Porównanie błędów prognoz** | `error_vis.py` | Wykresy porównawcze RMSE/MAE dla wszystkich sześciu modeli |
-| **Regresja przekrojowa CAPM / FF3** | `capm_3factors.py`, `3factors_R2_visuals.py`, `3factors_visuals_scatter.py` | Dwuetapowa regresja: (1) estymacja bet FF3/CAPM dla każdej spółki, (2) regresja przekrojowa RMSE względem bet; wizualizacje R² oraz zależności RMSE–bety |
+| **Regresja przekrojowa CAPM / FF3** | `capm_3factors.py`, `3factors_R2_visuals.py`, `3factors_visuals_scatter.py` | Dwuetapowa regresja: (1) estymacja bet FF3/CAPM dla każdej spółki, (2) regresja przekrojowa RMSE względem bet; wizualizacje R² oraz zależności RMSE-bety |
 
 ## Kolejność uruchamiania skryptów (pipeline)
 
-1. **`stock_scraping.py`** — pobiera dane cenowe (wymaga `nasdaq_top500.csv` w katalogu głównym) → `dane1000close.xlsx`
-2. **`log_returns.py`** — liczy stopy zwrotu → `dane1000stopy.xlsx`
+1. **`stock_scraping.py`** - pobiera dane cenowe (wymaga `nasdaq_top500.csv` w katalogu głównym) → `dane1000close.xlsx`
+2. **`log_returns.py`** - liczy stopy zwrotu → `dane1000stopy.xlsx`
 3. **Testy wstępne** (opcjonalnie, w dowolnej kolejności): `test_adf.py` → `ADF_vis.py`; `test_arch.py` → `arch_vis.py`; `test_wilska.py`; `desc_stats_and_vis.py`
 4. **Estymacja GARCH-rodziny na pełnej próbie**: `garch.py`, `egarch.py`, `gjrgarch.py`, `aparch.py`, następnie odpowiadające im `rozklad_*4testy.py`
-5. **Prognozowanie out-of-sample**: `OOS_rolling_windowGARCH.py` oraz `RF_oos_rw.py`, `ltsm_oos_rw.py`, `svr_oos_rw.py` (można uruchamiać niezależnie/równolegle — każdy zapisuje własne checkpointy i pliki wynikowe)
+5. **Prognozowanie out-of-sample**: `OOS_rolling_windowGARCH.py` oraz `RF_oos_rw.py`, `ltsm_oos_rw.py`, `svr_oos_rw.py` (można uruchamiać niezależnie/równolegle - każdy zapisuje własne checkpointy i pliki wynikowe)
 6. Jeżeli pojawi się błąd dotyczący formatu kolumn w pliku parquet z prognozami GARCH → uruchom **`fix_garchparquet.py`**
-7. **`test_diebolda_mariano.py`** — wymaga plików `.parquet` z kroku 5 (dla GARCH-rodziny: wersji `_fixed`, patrz krok 6)
-8. **`error_vis.py`** — wymaga plików `*_rmse_mae.xlsx` z kroku 5
-9. **`capm_3factors.py`** — wymaga `dane1000stopy.xlsx`, pliku czynników Famy-Frencha `F-F_Research_Data_Factors_daily.txt` (do pobrania ze strony Kennetha Frencha, patrz sekcja *Dane wejściowe*) oraz plików `*_rmse_mae.xlsx`
-10. **`3factors_R2_visuals.py`** i **`3factors_visuals_scatter.py`** — ⚠️ wymagają ręcznego przygotowania pośrednich plików (`ff3_regresja_przekrojowa_2.xlsx`, `ff3_regresja_przekrojowa_vis.xlsx`) na podstawie konkretnych arkuszy z pliku wyjściowego kroku 9 — patrz sekcja *Znane ograniczenia*.
+7. **`test_diebolda_mariano.py`** - wymaga plików `.parquet` z kroku 5 (dla GARCH-rodziny: wersji `_fixed`, patrz krok 6)
+8. **`error_vis.py`** - wymaga plików `*_rmse_mae.xlsx` z kroku 5
+9. **`capm_3factors.py`** - wymaga `dane1000stopy.xlsx`, pliku czynników Famy-Frencha `F-F_Research_Data_Factors_daily.txt` (do pobrania ze strony Kennetha Frencha, patrz sekcja *Dane wejściowe*) oraz plików `*_rmse_mae.xlsx`
+10. **`3factors_R2_visuals.py`** i **`3factors_visuals_scatter.py`** - ⚠️ wymagają ręcznego przygotowania pośrednich plików (`ff3_regresja_przekrojowa_2.xlsx`, `ff3_regresja_przekrojowa_vis.xlsx`) na podstawie konkretnych arkuszy z pliku wyjściowego kroku 9 - patrz sekcja *Znane ograniczenia*.
 
 ## Wymagania
 
@@ -74,13 +74,13 @@ pip install -r requirements.txt
 
 ## Dane wejściowe
 
-- `nasdaq_top500.csv` — lista tickerów wejściowych, znajduje się w repozytorium.
-- `dane1000close.xlsx`, `dane1000stopy.xlsx` — pliki generowane lokalnie przez `stock_scraping.py` i `log_returns.py`; **nie są dołączone do repozytorium** (rozmiar / dane pobierane na bieżąco z Yahoo Finance).
-- `F-F_Research_Data_Factors_daily.txt` — dzienne czynniki Famy-Frencha (Mkt-RF, SMB, HML, RF), pobierane ze strony [Kennetha Frencha (Dartmouth)](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html); 
+- `nasdaq_top500.csv` - lista tickerów wejściowych, znajduje się w repozytorium.
+- `dane1000close.xlsx`, `dane1000stopy.xlsx` - pliki generowane lokalnie przez `stock_scraping.py` i `log_returns.py`; **nie są dołączone do repozytorium** (rozmiar / dane pobierane na bieżąco z Yahoo Finance).
+- `F-F_Research_Data_Factors_daily.txt` - dzienne czynniki Famy-Frencha (Mkt-RF, SMB, HML, RF), pobierane ze strony [Kennetha Frencha (Dartmouth)](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html); 
 
 ## Znane ograniczenia / rzeczy do poprawy
 
 - Ścieżki plików wejściowych/wyjściowych są zapisane na sztywno w kodzie (brak `argparse`/pliku konfiguracyjnego).
-- Pliki `*_blankvisuals.py` to wcześniejsze/alternatywne wersje głównych skryptów estymacji GARCH-rodziny (bez części diagnostycznej) — pozostawione w repozytorium jako punkt odniesienia, docelowo do uporządkowania.
+- Pliki `*_blankvisuals.py` to wcześniejsze/alternatywne wersje głównych skryptów estymacji GARCH-rodziny (bez części diagnostycznej) - pozostawione w repozytorium jako punkt odniesienia, docelowo do uporządkowania.
 - Kroki 10. w pipeline (`3factors_R2_visuals.py`, `3factors_visuals_scatter.py`) wymagają obecnie ręcznego wydzielenia odpowiednich arkuszy z pliku `ff3_regresja_przekrojowa.xlsx` do osobnych plików - planowana automatyzacja tego kroku.
 
