@@ -1,3 +1,36 @@
+"""
+3factors_R2_visuals.py - Wykres R² modeli CAPM vs. FF3
+
+Rysuje wykres słupkowy porównujący współczynnik determinacji (R²)
+modeli CAPM i Famy-Frencha (FF3) dla poszczególnych zmiennych
+zależnych (błędów prognoz z różnych modeli).
+
+UWAGA: wymaga ręcznie przygotowanego pliku wejściowego - należy
+wydzielić arkusz „Regresja przekrojowa” z pliku
+ff3_regresja_przekrojowa.xlsx (wynik capm_3factors.py) do osobnego
+pliku ff3_regresja_przekrojowa_2.xlsx.
+
+Wejście: ff3_regresja_przekrojowa_2.xlsx (przygotowany ręcznie)
+Wyjście: porownanie_R2_CAPM_FF3.png
+
+----------------------------------------------------------------------
+
+3factors_R2_visuals.py - R² comparison chart: CAPM vs. FF3
+
+Draws a bar chart comparing the coefficient of determination (R²) of
+the CAPM and Fama-French (FF3) models for each dependent variable
+(forecast errors from the different models).
+
+NOTE: requires a manually prepared input file - the "Regresja
+przekrojowa" sheet must be extracted from ff3_regresja_przekrojowa.xlsx
+(the output of capm_3factors.py) into a separate file named
+ff3_regresja_przekrojowa_2.xlsx.
+
+Input: ff3_regresja_przekrojowa_2.xlsx (prepared manually)
+Output: porownanie_R2_CAPM_FF3.png
+"""
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
