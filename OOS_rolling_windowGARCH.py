@@ -1,3 +1,37 @@
+"""
+OOS_rolling_windowGARCH.py - Prognozy out-of-sample: GARCH-rodzina
+
+Dla każdej spółki i każdego z czterech modeli rodziny GARCH (GARCH,
+GJR-GARCH, EGARCH, APARCH) generuje jednokrokowe prognozy zmienności
+metodą rozszerzającego się okna (expanding window): model jest
+estymowany od nowa dla każdego kroku testowego na wszystkich danych
+dostępnych do tego momentu (TRAIN_SIZE=1250 obserwacji początkowych).
+Jako punkt odniesienia (proxy zmienności rzeczywistej) używany jest
+kwadrat stopy zwrotu (realized variance, r²). Obliczenia
+zrównoleglone (multiprocessing) z checkpointami co 50 spółek.
+
+Wejście: dane1000stopy.xlsx
+Wyjście: garch_prognozy_oos.parquet (prognozy), garch_rmse_mae.xlsx
+         (RMSE/MAE), checkpoints_garch/ (checkpointy pośrednie)
+
+----------------------------------------------------------------------
+
+OOS_rolling_windowGARCH.py - Out-of-sample forecasts: GARCH family
+
+For each company and each of the four GARCH-family models (GARCH,
+GJR-GARCH, EGARCH, APARCH), generates one-step-ahead volatility
+forecasts using an expanding-window scheme: the model is re-estimated
+at every test step on all data available up to that point
+(TRAIN_SIZE=1250 initial observations). Squared returns (realized
+variance, r²) are used as the volatility proxy / benchmark.
+Computation is parallelized (multiprocessing) with checkpoints every
+50 companies.
+
+Input: dane1000stopy.xlsx
+Output: garch_prognozy_oos.parquet (forecasts), garch_rmse_mae.xlsx
+        (RMSE/MAE), checkpoints_garch/ (intermediate checkpoints)
+"""
+
 import pandas as pd
 import numpy as np
 from arch import arch_model
