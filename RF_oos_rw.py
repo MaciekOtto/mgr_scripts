@@ -19,7 +19,7 @@ OUT_EXCEL        = 'rf_rmse_mae.xlsx'
 TRAIN_SIZE       = 1250
 LAG              = 5
 ROLLING_STD_W    = 20
-RETRAIN_EVERY    = 10   ]
+RETRAIN_EVERY    = 10   
 
 RF_PARAMS = dict(
     n_estimators     = 100,
