@@ -1,3 +1,23 @@
+"""
+arch_vis.py - Wizualizacja wyników testu ARCH
+
+Wczytuje wyniki testu ARCH i rysuje histogram rozkładu p-value (z
+linią odcięcia p = 0.05) dla wszystkich spółek.
+
+Wejście: wyniki_ARIMA_ARCH_1000_stopyzw.xlsx
+Wyjście: histogramy_arch_stp.png
+
+----------------------------------------------------------------------
+
+arch_vis.py - ARCH test results visualization
+
+Loads the ARCH test results and draws a histogram of p-value
+distribution (with a p = 0.05 cutoff line) across all companies.
+
+Input: wyniki_ARIMA_ARCH_1000_stopyzw.xlsx
+Output: histogramy_arch_stp.png
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
