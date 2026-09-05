@@ -1,3 +1,25 @@
+"""
+ADF_vis.py - Wizualizacja wyników testu ADF
+
+Wczytuje wyniki testu ADF i rysuje dwa histogramy: rozkład statystyki
+ADF oraz rozkład p-value (z linią odcięcia p = 0.05) dla wszystkich
+spółek.
+
+Wejście: wyniki_ADF_1000_stp.xlsx
+Wyjście: histogramy_adf.png
+
+----------------------------------------------------------------------
+
+ADF_vis.py - ADF test results visualization
+
+Loads the ADF test results and draws two histograms: the distribution
+of the ADF statistic and the distribution of p-values (with a p = 0.05
+cutoff line) across all companies.
+
+Input: wyniki_ADF_1000_stp.xlsx
+Output: histogramy_adf.png
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
