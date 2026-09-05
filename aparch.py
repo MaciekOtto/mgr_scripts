@@ -1,3 +1,25 @@
+"""
+aparch.py - Estymacja modelu APARCH(1,1) (pełna próba, firm-by-firm)
+
+Dla każdej spółki szacuje model APARCH(1,1) na przeskalowanych stopach
+zwrotu (x100). Zapisuje oszacowane parametry oraz histogramy ich
+rozkładów.
+
+Wejście: dane1000stopy.xlsx
+Wyjście: wyniki_APARCH_1000.xlsx, wykresy_aparch_parametry/*.png
+
+----------------------------------------------------------------------
+
+aparch.py - APARCH(1,1) estimation (full sample, firm-by-firm)
+
+Fits an APARCH(1,1) model to each company's return series, scaled by
+100. Saves the estimated parameters and histograms of their
+distributions.
+
+Input: dane1000stopy.xlsx
+Output: wyniki_APARCH_1000.xlsx, wykresy_aparch_parametry/*.png
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
