@@ -1,3 +1,35 @@
+"""
+3factors_visuals_scatter.py - Wykresy rozrzutu: RMSE a bety FF3
+
+Rysuje siatkę 2x2 wykresów rozrzutu (z dopasowaną linią regresji)
+pokazujących zależność błędu prognozy (RMSE) modeli GARCH i Random
+Forest od ekspozycji spółki na czynniki SMB i HML.
+
+UWAGA: wymaga ręcznie przygotowanego pliku wejściowego - należy
+wydzielić arkusz „Dane do regresji” z pliku
+ff3_regresja_przekrojowa.xlsx (wynik capm_3factors.py) do osobnego
+pliku ff3_regresja_przekrojowa_vis.xlsx.
+
+Wejście: ff3_regresja_przekrojowa_vis.xlsx (przygotowany ręcznie)
+Wyjście: scatter_garch_rf.png
+
+----------------------------------------------------------------------
+
+3factors_visuals_scatter.py - Scatter plots: RMSE vs. FF3 betas
+
+Draws a 2x2 grid of scatter plots (with a fitted regression line)
+showing how the forecast error (RMSE) of the GARCH and Random Forest
+models relates to a company's exposure to the SMB and HML factors.
+
+NOTE: requires a manually prepared input file - the "Dane do regresji"
+sheet must be extracted from ff3_regresja_przekrojowa.xlsx (the output
+of capm_3factors.py) into a separate file named
+ff3_regresja_przekrojowa_vis.xlsx.
+
+Input: ff3_regresja_przekrojowa_vis.xlsx (prepared manually)
+Output: scatter_garch_rf.png
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
