@@ -1,3 +1,25 @@
+"""
+aparch_blankvisuals.py - Wcześniejszy/alternatywny wariant aparch.py
+
+Wariant aparch.py z tą samą metodą estymacji APARCH(1,1), różniący się
+szczegółami wizualizacji i/lub nazwami plików wyjściowych. Pozostawiony
+jako punkt odniesienia.
+
+Wejście: dane1000stopy.xlsx
+Wyjście: pliki wynikowe analogiczne do aparch.py (inne nazwy)
+
+----------------------------------------------------------------------
+
+aparch_blankvisuals.py - Earlier/alternate variant of aparch.py
+
+A variant of aparch.py using the same APARCH(1,1) estimation method,
+differing in visualization details and/or output filenames. Kept as a
+reference.
+
+Input: dane1000stopy.xlsx
+Output: result files analogous to aparch.py (different names)
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
