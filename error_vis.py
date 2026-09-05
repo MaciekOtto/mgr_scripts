@@ -124,7 +124,7 @@ def plot_panel_ml(df_all):
     plt.savefig(os.path.join(OUTPUT_FOLDER, '05_histogram_RMSE_panel_ML.png'))
     plt.close()
     print("Zapisano: 05_histogram_RMSE_panel_ML.png")
-─
+
 
 def export_summary_table(df_all):
     summary = (df_all.groupby('Model')['RMSE']
